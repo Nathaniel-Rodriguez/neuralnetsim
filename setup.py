@@ -16,6 +16,6 @@ setup(name='neuralnetsim',
           'matplotlib',
           'utilities'
       ],
-    dependency_links=['https://github.com/Nathaniel-Rodriguez/utilities.git@0.1#egg=utilities'],
+    dependency_links=['https://github.com/Nathaniel-Rodriguez/utilities.git@0.1'],
     include_package_data=True,
     zip_safe=False)
