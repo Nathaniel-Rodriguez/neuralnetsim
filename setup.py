@@ -14,7 +14,8 @@ setup(name='neuralnetsim',
           'networkx',
           'numpy',
           'matplotlib',
-          'https://github.com/Nathaniel-Rodriguez/utilities/tarball/master#egg=utilities'
+          'utilities=0.1'
       ],
+    dependency_links=['https://github.com/Nathaniel-Rodriguez/utilities/tarball/master#egg=utilities'],
     include_package_data=True,
     zip_safe=False)
