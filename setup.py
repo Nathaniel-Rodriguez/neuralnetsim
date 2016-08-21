@@ -13,8 +13,9 @@ setup(name='neuralnetsim',
     install_requires=[
           'networkx',
           'numpy',
-          'matplotlib'
+          'matplotlib',
+          'utilities'
       ],
-    dependency_links=['https://github.com/Nathaniel-Rodriguez/utilities.git'],
+    dependency_links=['https://github.com/Nathaniel-Rodriguez/utilities.git#egg=utilities'],
     include_package_data=True,
     zip_safe=False)
