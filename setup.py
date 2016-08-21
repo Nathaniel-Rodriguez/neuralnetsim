@@ -14,8 +14,8 @@ setup(name='neuralnetsim',
           'networkx',
           'numpy',
           'matplotlib',
-          'scikit-learn',
+          'utilities>=0.1'
       ],
-    dependency_links=['https://github.com/scikit-learn/scikit-learn/archive/0.17.1-1.tar.gz#egg=scikit-learn'],
+    dependency_links=['https://github.com/Nathaniel-Rodriguez/utilities/archive/0.1.tar.gz#egg=utilities'],
     include_package_data=True,
     zip_safe=False)
