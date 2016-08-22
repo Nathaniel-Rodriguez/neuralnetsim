@@ -169,19 +169,31 @@ class NeuralNetSim(object):
         return set([ self.network.node[node][self.community_key] 
             for node in self.network.nodes_iter() ])
 
-    def GetCommunityNodeDict(self):
+    def GetCommunityNodeDict(self, set=False):
         """
         Returns a dictionary with communities as keys and list of (nx) nodes as
         values. This gives a list of nodes for each community
         """
 
-        community_dict = {}
-        for node in self.network.nodes_iter():
-            community = self.network.node[node][self.community_key]
-            if community in community_dict:
-                community_dict[community].append(node)
-            else:
-                community_dict[community] = [node]
+        if set:
+            community_dict = {}
+            for node in self.network.nodes_iter():
+                community = self.network.node[node][self.community_key]
+                if community in community_dict:
+                    community_dict[community].append(node)
+                else:
+                    community_dict[community] = [node]
+
+            return { com: set(node_list) for com, node_list in community_dict.items() }
+            
+        else:
+            community_dict = {}
+            for node in self.network.nodes_iter():
+                community = self.network.node[node][self.community_key]
+                if community in community_dict:
+                    community_dict[community].append(node)
+                else:
+                    community_dict[community] = [node]
 
         return community_dict
 
@@ -583,26 +595,27 @@ class NeuralNetSim(object):
         if result_type == 'SpikeTimes':
             
             if com:
+                dictCom_setNodes = self.GetCommunityNodeDict()
                 dictCom_dictNodes_listTrials_arraySpikeTimes = { com : {} for com in self.GetCommunities() }
                 for com in dictCom_dictNodes_listTrials_arraySpikeTimes.keys():
                     for node in self.network.nodes_iter():
+                        dictCom_dictNodes_listTrials_arraySpikeTimes[com][node] = []
                         for event_dict in self.SpikeDetectorOutput_byTrial:
-                            if node in event_dict[com]:
-                                if node in dictCom_dictNodes_listTrials_arraySpikeTimes[com]:
-                                    dictCom_dictNodes_listTrials_arraySpikeTimes[com][node].append(event_dict[com][node])
-                                else:
-                                    dictCom_dictNodes_listTrials_arraySpikeTimes[com][node] = [ event_dict[com][node] ]
+                            if node in dictCom_setNodes[com]:
+                                dictCom_dictNodes_listTrials_arraySpikeTimes[com][node].append(event_dict[com][node])
+                            else:
+                                dictCom_dictNodes_listTrials_arraySpikeTimes[com][node].append([])
                 return dictCom_dictNodes_listTrials_arraySpikeTimes
 
             else:
                 dictNodes_listTrials_arraySpikeTimes = {}
                 for node in self.network.nodes_iter():
+                    dictNodes_listTrials_arraySpikeTimes[node] = []
                     for event_dict in self.SpikeDetectorOutput_byTrial:
                         if node in event_dict['all']:
-                            if node in dictNodes_listTrials_arraySpikeTimes:
-                                dictNodes_listTrials_arraySpikeTimes[node].append(event_dict['all'][node])
-                            else:
-                                dictNodes_listTrials_arraySpikeTimes[node] = [ event_dict['all'][node] ]
+                            dictNodes_listTrials_arraySpikeTimes[node].append(event_dict['all'][node])
+                        else:
+                            dictNodes_listTrials_arraySpikeTimes[node].append([ ])
 
                 return dictNodes_listTrials_arraySpikeTimes
 
@@ -642,7 +655,7 @@ class NeuralNetSim(object):
                 if avg:
                     dictCom_oncefire_activity = { com : 0.0 for com in self.GetCommunities() }
                     for com in dictCom_oncefire_activity.keys():
-                        for vent_dict in self.SpikeDetectorOutput_byTrial:
+                        for event_dict in self.SpikeDetectorOutput_byTrial:
                             dictCom_oncefire_activity[com] += len(event_dict[com]) / float(len(self.network))
                         dictCom_oncefire_activity[com] /= len(self.SpikeDetectorOutput_byTrial)
                     return dictCom_oncefire_activity
@@ -658,7 +671,7 @@ class NeuralNetSim(object):
                     avg_oncefire_activity = 0.0
                     for event_dict in self.SpikeDetectorOutput_byTrial:
                         avg_oncefire_activity += len(event_dict['all']) / float(len(self.network))
-                    return avg_oncefire_activity / len(self.DetectorOutput_byTrial)
+                    return avg_oncefire_activity / len(self.SpikeDetectorOutput_byTrial)
                 else:
                     oncefire_activity = []
                     for event_dict in self.SpikeDetectorOutput_byTrial:
@@ -683,7 +696,7 @@ class NeuralNetSim(object):
                             arrayTrials_arrayActivities[i][:] = \
                                 np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt'] * 1000.0
 
-                        dictCom_arrayActivities[com] = arrayTrials_arrayActivities[i][:]
+                        dictCom_arrayActivities[com] = np.mean(arrayTrials_arrayActivities, axis=0)
 
                     return dictCom_arrayActivities, bins
 
