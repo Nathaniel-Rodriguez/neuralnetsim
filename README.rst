@@ -7,6 +7,6 @@ use --prefix for local install.
 Make sure it is installed with the same python exe
 that will be calling it.
 
-If also requires the utilities library which can be downloaded here
+It also requires the utilities library which can be downloaded here
 or installed with pip install git+:
 	https://github.com/Nathaniel-Rodriguez/utilities/archive/0.1.tar.gz

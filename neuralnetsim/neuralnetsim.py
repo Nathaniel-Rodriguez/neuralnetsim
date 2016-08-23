@@ -728,7 +728,7 @@ class NeuralNetSim(object):
                             else:
                                 spike_freqs_by_nodes.append(np.histogram([], bins=bins)[0])
 
-                        arrayTrials_arrayActivities[i][:] = np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt']
+                        arrayTrials_arrayActivities[i][:] = np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt'] * 1000.0
 
                     return np.mean(arrayTrials_arrayActivities, axis=0), bins
                 else:
@@ -741,7 +741,7 @@ class NeuralNetSim(object):
                             else:
                                 spike_freqs_by_nodes.append(np.histogram([], bins=bins)[0])
 
-                        arrayTrials_arrayActivities[i][:] = np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt']
+                        arrayTrials_arrayActivities[i][:] = np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt'] * 1000.0
 
                     return arrayTrials_arrayActivities, bins
 
@@ -771,7 +771,7 @@ class NeuralNetSim(object):
                             else:
                                 spike_freqs_by_trial.append(np.histogram([], bins=bins)[0])
 
-                        dictCom_dictNodes_arrayPSTH[com][node] = np.mean(spike_freqs_by_trial, axis=0) / kwargs['dt']
+                        dictCom_dictNodes_arrayPSTH[com][node] = np.mean(spike_freqs_by_trial, axis=0) / kwargs['dt'] * 1000.0
                 
                 return dictCom_dictNodes_arrayPSTH, bins     
 
@@ -785,7 +785,7 @@ class NeuralNetSim(object):
                         else:
                             spike_freqs_by_trial.append(np.histogram([], bins=bins)[0])
 
-                    dictNodes_arrayPSTH[node] = np.mean(spike_freqs_by_trial, axis=0) / kwargs['dt']
+                    dictNodes_arrayPSTH[node] = np.mean(spike_freqs_by_trial, axis=0) / kwargs['dt'] * 1000.0
 
                 return dictNodes_arrayPSTH, bins
 
