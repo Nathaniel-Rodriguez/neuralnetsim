@@ -1184,6 +1184,18 @@ def plot_PSTH(prefix, array_spike_times, sim_time, dt=5.0, window=None, start_ti
     plt.clf()
     plt.close()
 
+def plot_ISIdistribution(prefix, array_spike_times, x_log=False, y_log=False, trials=False):
+    """
+    """
+
+    if trials:
+        isi = [ spike_times[1:] - spike_times[:-1] for spike_times in array_spike_times ]
+        utilities.plot_ccdf(prefix + '_ISI_dist', 
+            np.concatenate(isi), "interval (ms)", x_log=x_log, y_log=y_log)        
+    else:
+        utilities.plot_ccdf(prefix + '_ISI_dist', 
+            array_spike_times[1:] - array_spike_times[:-1], "interval (ms)", x_log=x_log, y_log=y_log)
+
 if __name__ == '__main__':
     pass
     # # Couple neuron testing

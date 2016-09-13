@@ -7,3 +7,4 @@ from .neuralnetsim import bin_trial_spike_frequency
 from .neuralnetsim import branching_values
 from .neuralnetsim import calc_branching_parameter
 from .neuralnetsim import plot_PSTH
+from .neuralnetsim import plot_ISIdistribution
