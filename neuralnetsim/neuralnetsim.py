@@ -1161,7 +1161,7 @@ def calc_branching_parameter(binned_spike_frequency):
     branching_values = binned_spike_frequency[1:] / (binned_spike_frequency[:-1] * 1.0)
     return np.mean(branching_values[np.isfinite(branching_values)])
 
-def plot_PSTH(self, prefix, array_spike_times, sim_time, dt=5.0, window=None, start_time=0.0):
+def plot_PSTH(prefix, array_spike_times, sim_time, dt=5.0, window=None, start_time=0.0):
     """
     """
 
