@@ -1161,17 +1161,18 @@ def calc_branching_parameter(binned_spike_frequency):
     branching_values = binned_spike_frequency[1:] / (binned_spike_frequency[:-1] * 1.0)
     return np.mean(branching_values[np.isfinite(branching_values)])
 
-def plot_PSTH(prefix, array_spike_times, sim_time, dt=5.0, window=None, start_time=0.0):
+def plot_PSTH(prefix, array_spike_times, sim_time, dt=5.0, window=None, start_time=0.0, trials=False):
     """
     """
 
     bins = np.arange(start_time, sim_time + dt, dt)
 
-    if len(array_spike_times.shape) == 1:
-        arrayPSTH = np.histogram(array_spike_times, bins=bins)[0] / dt * 1000.0
-    elif len(array_spike_times.shape) == 2:
-        arrayPSTH = np.mean([ np.histogram(trial, bins=bins)[0] \
+    if trials:
+        arrayPSTH = np.mean([ np.histogram(trial, bins=bins)[0] 
+            if len(trial)>0 else np.histogram([], bins=bins)[0] \
             for trial in array_spike_times ], axis=0) / dt * 1000.0
+    else:
+        arrayPSTH = np.histogram(array_spike_times, bins=bins)[0] / dt * 1000.0
 
     plt.clf()
     plt.bar(bins[:-1], arrayPSTH, bins[1:] - bins[:-1])
