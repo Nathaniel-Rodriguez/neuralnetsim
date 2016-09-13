@@ -55,10 +55,11 @@ class NeuralNetSim(object):
             'sim_time', 'inhib_weight_scale', 'weight_key', 'community_key',
             'synapse_parameter_dict', 'neuron_parameter_dict', 'signal_nodes',
             'signal_connection_ratio', 'signal_community', 'volt_detectors',
-            'use_network_weights'])
+            'use_network_weights', 'verbosity'])
 
         property_defaults = { 'neuron_type': 'iaf_neuron', 
             'seed': 1,
+            'verbosity': 30
             'ex_neuron_parameters': None,
             'inhib_neuron_parameters': None,
             'synapse_type': 'static_synapse',
@@ -112,6 +113,9 @@ class NeuralNetSim(object):
         # Results
         self.SpikeDetectorOutput_byTrial = []
         self.VoltageDetectorOutput_byTrial = []
+
+        # Set nest output
+        nest.set_verbosity(self.verbosity)
 
     def SetModelParameters(self):
         """
@@ -373,8 +377,8 @@ class NeuralNetSim(object):
                     self.input_neurons = list(self.neurons_ex)
 
                 if len(self.input_neurons) < num_inputs:
-                    print "Warning: Only ", str(self.input_neurons), \
-                        " available. Require ", str(num_inputs), ". Inputs set to max available."
+                    print( "Warning: Only ", str(self.input_neurons),
+                        " available. Require ", str(num_inputs), ". Inputs set to max available.")
                     num_inputs = len(self.input_neurons)
 
                 self.input_neurons = list(np.random.choice(self.input_neurons, size=num_inputs, replace=False))
@@ -573,6 +577,10 @@ class NeuralNetSim(object):
 
     def ReturnResults(self, result_type='SpikeTimes', com=False, avg=True, **kwargs):
         """
+
+        NOTE: IN FUTURE WE WOULD LIKE TO MAKE ALL DATATYPES BE THE SAME, SO COM and
+        NON-COM WILL BE THE SAME. SO WHEN COMS DON'T EXIST COM=1
+
         results_types: SpikeTimes, VoltageTraces, OnceFire, Activity, ISI, PSTH
 
         Returns a datastructure with the desired result type in a dictionary.
