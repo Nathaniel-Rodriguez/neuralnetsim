@@ -1161,6 +1161,28 @@ def calc_branching_parameter(binned_spike_frequency):
     branching_values = binned_spike_frequency[1:] / (binned_spike_frequency[:-1] * 1.0)
     return np.mean(branching_values[np.isfinite(branching_values)])
 
+def PlotPSTH(self, prefix, array_spike_times, sim_time, dt=5.0, window=None, start_time=0.0):
+    """
+    """
+
+    bins = np.arange(start_time, sim_time + dt, dt)
+
+    if len(array_spike_times.shape) == 1:
+        arrayPSTH = np.histogram(array_spike_times, bins=bins)[0] / dt * 1000.0
+    elif len(array_spike_times.shape) == 2:
+        arrayPSTH = np.mean([ np.histogram(trial, bins=bins)[0] \
+            for trial in array_spike_times ], axis=0) / dt * 1000.0
+
+    plt.clf()
+    plt.bar(bins[:-1], arrayPSTH, bins[1:] - bins[:-1])
+    if window != None:
+        plt.xlim(window[0], window[1])
+    plt.xlabel('time (ms)')
+    plt.ylabel(r'$\rho$')
+    plt.savefig(prefix + "_psth.png", dpi=300)
+    plt.clf()
+    plt.close()
+
 if __name__ == '__main__':
     pass
     # # Couple neuron testing
