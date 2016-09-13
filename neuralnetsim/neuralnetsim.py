@@ -59,7 +59,7 @@ class NeuralNetSim(object):
 
         property_defaults = { 'neuron_type': 'iaf_neuron', 
             'seed': 1,
-            'verbosity': 30
+            'verbosity': 30,
             'ex_neuron_parameters': None,
             'inhib_neuron_parameters': None,
             'synapse_type': 'static_synapse',
