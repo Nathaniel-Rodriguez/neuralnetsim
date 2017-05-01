@@ -6,3 +6,9 @@
 
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
+
+# Sublime project file
+*.sublime*
+
+# remove cache files
+/*__pycache__

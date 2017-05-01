@@ -38,6 +38,9 @@ class NeuralNetSim(object):
         signal_generators: ["dc_generator", "spike_generator", ...]
         signal_generator_pars: [ {'amplitude', 'start', 'stop'}, {'spike_times', 'spike_weights'}, ...]
         signal_connection_pars: [ {'model', 'weight', 'delay'}]
+
+        Can take a list of neurons (signal_nodes) or a list of communities (signal_communities) or
+        if none are specified it defaults to random selection of nodes based on (signal_connection_ratio)
         """
 
         self.network = network # The network is not changed by NNS in any way.
@@ -54,7 +57,7 @@ class NeuralNetSim(object):
             'signal_generators', 'signal_generator_pars', 'num_trials', 
             'sim_time', 'inhib_weight_scale', 'weight_key', 'community_key',
             'synapse_parameter_dict', 'neuron_parameter_dict', 'signal_nodes',
-            'signal_connection_ratio', 'signal_community', 'volt_detectors',
+            'signal_connection_ratio', 'signal_communities', 'volt_detectors',
             'use_network_weights', 'verbosity'])
 
         property_defaults = { 'neuron_type': 'iaf_neuron', 
@@ -86,7 +89,7 @@ class NeuralNetSim(object):
             'signal_generator_pars': [],
             'signal_connection_pars': [],
             'use_communities': False,
-            'signal_community': 1,
+            'signal_communities': [],
             'num_trials': 1,
             'sim_time': 1000.0,
             'inhib_weight_scale': 0.0, 
@@ -370,9 +373,11 @@ class NeuralNetSim(object):
                 if num_inputs < 1:
                     num_inputs = 1
 
-                if self.use_communities:
-                    community_neurons = set([ self.NodeToNest[node] for node in self.GetCommunityNodes(self.signal_community) ])
-                    self.input_neurons = list(community_neurons.intersection(set(self.neurons_ex)))
+                if self.use_communities and (len(self.signal_communities) != 0):
+                    self.input_neurons = []
+                    for com in self.signal_communities:
+                        community_neurons = set([ self.NodeToNest[node] for node in self.GetCommunityNodes(self.signal_communities) ])
+                        self.input_neurons += list(community_neurons.intersection(set(self.neurons_ex)))
                 else:
                     self.input_neurons = list(self.neurons_ex)
 
@@ -578,9 +583,6 @@ class NeuralNetSim(object):
     def ReturnResults(self, result_type='SpikeTimes', com=False, avg=True, **kwargs):
         """
 
-        NOTE: IN FUTURE WE WOULD LIKE TO MAKE ALL DATATYPES BE THE SAME, SO COM and
-        NON-COM WILL BE THE SAME. SO WHEN COMS DON'T EXIST COM=1
-
         results_types: SpikeTimes, VoltageTraces, OnceFire, Activity, ISI, PSTH
 
         Returns a datastructure with the desired result type in a dictionary.
@@ -598,10 +600,40 @@ class NeuralNetSim(object):
         to nx node IDs
 
         'dt' needed for activity and psth
+
+        If com0==True, then the whole network is assigned to com0 and the dictCom
+        structure is used, regardless of whether com=True/False. If com=True
+        then 1-X (assumes coms start at 1 and not 0, breaks if it starts at 0)
+        will be set as well. However, if com=False, then only com0 has an entry
         """
 
         if result_type == 'SpikeTimes':
-            
+
+            if kwargs.get('com0', False):
+                dictCom_dictNodes_listTrials_arraySpikeTimes = { 0 : {} }
+                for node in self.network.nodes_iter():
+                    dictCom_dictNodes_listTrials_arraySpikeTimes[0][node] = []
+                    for event_dict in self.SpikeDetectorOutput_byTrial:
+                        if node in event_dict['all']:
+                            dictCom_dictNodes_listTrials_arraySpikeTimes[0][node].append(event_dict['all'][node])
+                        else:
+                            dictCom_dictNodes_listTrials_arraySpikeTimes[0][node].append([ ])                
+
+                if com:
+                    for com in self.GetCommunities():
+                        if com == 0:
+                            print "ERROR community with key=0 not allowed if com0 set True"
+                            sys.exit()
+                        for node in self.network.nodes_iter():
+                            dictCom_dictNodes_listTrials_arraySpikeTimes[com][node] = []
+                            for event_dict in self.SpikeDetectorOutput_byTrial:
+                                if node in dictCom_setNodes[com]:
+                                    dictCom_dictNodes_listTrials_arraySpikeTimes[com][node].append(event_dict[com][node])
+                                else:
+                                    dictCom_dictNodes_listTrials_arraySpikeTimes[com][node].append([])
+
+                return dictCom_dictNodes_listTrials_arraySpikeTimes
+
             if com:
                 dictCom_setNodes = self.GetCommunityNodeDict()
                 dictCom_dictNodes_listTrials_arraySpikeTimes = { com : {} for com in self.GetCommunities() }
@@ -659,6 +691,42 @@ class NeuralNetSim(object):
                     return dictNodes_arrayTrials_arrayVoltage, times
 
         elif result_type == 'OnceFire':
+
+            if kwargs.get('com0', False):
+                if avg:
+                    dictCom_oncefire_activity = { 0 : 0.0 }
+                    for event_dict in self.SpikeDetectorOutput_byTrial:
+                        dictCom_oncefire_activity[0] += len(event_dict['all']) / float(len(self.network))
+                    dictCom_oncefire_activity[0] = dictCom_oncefire_activity[0] / len(self.SpikeDetectorOutput_byTrial)
+
+                    if com:
+                        for com in self.GetCommunities():
+                            if com == 0:
+                                print "ERROR: com == 0 not allowed if com0 is True"
+                                sys.exit()
+                            dictCom_oncefire_activity[com] = 0.0
+                            for event_dict in self.SpikeDetectorOutput_byTrial:
+                                dictCom_oncefire_activity[com] += len(event_dict[com]) / float(len(self.network))
+                            dictCom_oncefire_activity[com] /= len(self.SpikeDetectorOutput_byTrial)
+                    return dictCom_oncefire_activity
+
+                else:
+                    dictCom_oncefire_activity = { 0 : [] }
+                    for event_dict in self.SpikeDetectorOutput_byTrial:
+                        dictCom_oncefire_activity[0].append(len(event_dict['all']) / float(len(self.network)))
+                    dictCom_oncefire_activity[0] = np.array(dictCom_oncefire_activity[0])
+
+                    if com:
+                        for com in self.GetCommunities():
+                            if com == 0:
+                                print "ERROR: com == 0 not allowed if com0 is True"
+                                sys.exit()
+                            dictCom_oncefire_activity[com] = []
+                            for event_dict in self.SpikeDetectorOutput_byTrial:
+                                dictCom_oncefire_activity[com].append(len(event_dict[com]) / float(len(self.network)))
+                            dictCom_oncefire_activity[com] = np.array(dictCom_oncefire_activity[com])
+                    return dictCom_oncefire_activity 
+
             if com:
                 if avg:
                     dictCom_oncefire_activity = { com : 0.0 for com in self.GetCommunities() }
@@ -688,6 +756,71 @@ class NeuralNetSim(object):
 
         elif result_type == 'Activity': # page 177 of book: 1/deltaT * 1/num_neurons * num_spikes_in_network_in_window(deltaT)
             bins = np.arange(0.0, self.sim_time + kwargs['dt'], kwargs['dt'])
+
+            if kwargs.get('com0', False):
+                if avg:
+                    dictCom_arrayActivities = { 0 : np.zeros((self.num_trials, len(bins)-1)) }
+                    for i, event_dict in enumerate(self.SpikeDetectorOutput_byTrial):
+                        spike_freqs_by_nodes = []
+                        for node in self.network.nodes_iter():
+                            if node in event_dict['all']:
+                                spike_freqs_by_nodes.append(np.histogram(event_dict['all'][node], bins=bins)[0])
+                            else:
+                                spike_freqs_by_nodes.append(np.histogram([], bins=bins)[0])
+
+                        dictCom_arrayActivities[0][i][:] = np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt'] * 1000.0
+
+                    if com:
+                        for com in self.GetCommunities():
+                            if com == 0:
+                                print "ERROR: com == 0 not allowed if com0 is True"
+                                sys.exit()
+                            arrayTrials_arrayActivities = np.zeros((self.num_trials, len(bins)-1))
+                            for i, event_dict in enumerate(self.SpikeDetectorOutput_byTrial):
+                                spike_freqs_by_nodes = []
+                                for node in self.GetCommunityNodes(com):
+                                    if node in event_dict[com]:
+                                        spike_freqs_by_nodes.append(np.histogram(event_dict[com][node], bins=bins)[0])
+                                    else:
+                                        spike_freqs_by_nodes.append(np.histogram([], bins=bins)[0])
+
+                                arrayTrials_arrayActivities[i][:] = \
+                                    np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt'] * 1000.0
+
+                            dictCom_arrayActivities[com] = np.mean(arrayTrials_arrayActivities, axis=0)
+
+                    return dictCom_arrayActivities, bins
+
+                else:
+                    dictCom_arrayTrials_arrayActivities = { 0 : np.zeros((self.num_trials, len(bins)-1)) }
+                    for i, event_dict in enumerate(self.SpikeDetectorOutput_byTrial):
+                        spike_freqs_by_nodes = []
+                        for node in self.network.nodes_iter():
+                            if node in event_dict['all']:
+                                spike_freqs_by_nodes.append(np.histogram(event_dict['all'][node], bins=bins)[0])
+                            else:
+                                spike_freqs_by_nodes.append(np.histogram([], bins=bins)[0])
+
+                        dictCom_arrayTrials_arrayActivities[0][i][:] = np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt'] * 1000.0
+
+                    if com:
+                        for com in self.GetCommunities():
+                            if com == 0:
+                                print "ERROR: com == 0 not allowed if com0 is True"
+                                sys.exit()
+                            for i, event_dict in enumerate(self.SpikeDetectorOutput_byTrial):
+                                spike_freqs_by_nodes = []
+                                for node in self.GetCommunityNodes(com):
+                                    if node in event_dict[com]:
+                                        spike_freqs_by_nodes.append(np.histogram(event_dict[com][node], bins=bins)[0])
+                                    else:
+                                        spike_freqs_by_nodes.append(np.histogram([], bins=bins)[0])
+
+                                dictCom_arrayTrials_arrayActivities[com][i][:] = \
+                                    np.mean(spike_freqs_by_nodes, axis=0) / kwargs['dt'] * 1000.0
+
+                    return dictCom_arrayTrials_arrayActivities, bins
+
             if com:
                 if avg:
                     dictCom_arrayActivities = { com : {} for com in self.GetCommunities() }
@@ -768,6 +901,37 @@ class NeuralNetSim(object):
 
         elif result_type == 'PSTH': # page 176 of book: 1/deltaT * 1/num_trials * num_spikes_of_neuron_n_in_window(deltaT)
             bins = np.arange(0.0, self.sim_time + kwargs['dt'], kwargs['dt'])
+
+            if kwargs.get('com0', False):
+
+                dictCom_dictNodes_arrayPSTH = { 0: {} }
+                for node in self.network.nodes_iter():
+                    spike_freqs_by_trial = []
+                    for event_dict in self.SpikeDetectorOutput_byTrial:
+                        if node in event_dict['all']:
+                            spike_freqs_by_trial.append(np.histogram(event_dict['all'][node], bins=bins)[0])
+                        else:
+                            spike_freqs_by_trial.append(np.histogram([], bins=bins)[0])
+
+                    dictCom_dictNodes_arrayPSTH[0][node] = np.mean(spike_freqs_by_trial, axis=0) / kwargs['dt'] * 1000.0
+
+                if com:
+                    for com in self.GetCommunities():
+                        if com == 0:
+                                print "ERROR: com == 0 not allowed if com0 is True"
+                                sys.exit()
+                        for node in self.GetCommunityNodes(com):
+                            spike_freqs_by_trial = []
+                            for event_dict in self.SpikeDetectorOutput_byTrial:
+                                if node in event_dict[com]:
+                                    spike_freqs_by_trial.append(np.histogram(event_dict[com][node], bins=bins)[0])
+                                else:
+                                    spike_freqs_by_trial.append(np.histogram([], bins=bins)[0])
+
+                            dictCom_dictNodes_arrayPSTH[com][node] = np.mean(spike_freqs_by_trial, axis=0) / kwargs['dt'] * 1000.0
+
+                return dictCom_dictNodes_arrayPSTH, bins  
+
             if com:
                 dictCom_dictNodes_arrayPSTH = { com : {} for com in self.GetCommunities() }
                 for com in dictCom_dictNodes_arrayPSTH.keys():
@@ -805,7 +969,7 @@ class NeuralNetSim(object):
         exclude_nest_keys = set(['ex_neuron_parameters', 'inhib_neuron_parameters',
             'IE_synapse_parameters', 'EI_synapse_parameters', 'II_synapse_parameters',
             'EE_synapse_parameters'])
-        utilities.save_object({key : nns.__dict__[key] for key in nns.__dict__.keys() \
+        utilities.save_object({key : self.__dict__[key] for key in self.__dict__.keys() \
             if key not in exclude_nest_keys }, prefix + "_NNS_results.pyobj")
 
     def PlotVoltageTrace(self, prefix, nodes='all'):
@@ -967,6 +1131,11 @@ class NeuronFittingSim(NeuralNetSim):
     """
 
     def __init__(self, network, input_nodes, input_spike_trains, **kwargs):
+        """
+        input_nodes - a list of node ids from the network that will recieve input
+        input_spike_trains - a dictionary keyed by node id with spike_times arrays
+        """
+
         super(NeuronFittingSim, self).__init__(network, **kwargs)
         self.input_nodes = input_nodes
         self.input_spike_trains = input_spike_trains
@@ -1023,13 +1192,12 @@ class NeuronFittingSim(NeuralNetSim):
         """
         Creates spike generators and connects them to the parrots
 
-        assumes parrots created in network order and thereby line
-        up with input list of spike-times
+        Uses input node list for spike train dictionary order
         """
 
         for i, parrot in enumerate(self.parrots):
             spike_generator = nest.Create("spike_generator", 1, {'allow_offgrid_spikes':True, 
-                'spike_times': self.input_spike_trains[i]})
+                'spike_times': self.input_spike_trains[self.NestToNode[parrot]]})
             nest.Connect(spike_generator, [parrot], "all_to_all", \
                 syn_spec={"model": "static_synapse", "weight":1.0, "delay":0.1})
 
@@ -1228,7 +1396,7 @@ if __name__ == '__main__':
     #     signal_connection_pars=[{'model':'static_synapse', 'weight':1.0, 'delay':0.1}],
     #     synapse_type='tsodyks_synapse',
     #     EE_synapse_parameters={"U":0.67, "u":0.67, 'x':1.0, "tau_rec":450.0, "tau_fac":0.0, "weight":40000.},
-    #     num_trials=3, use_communities=True, signal_community=1)
+    #     num_trials=3, use_communities=True, signal_communities=1)
     # nns.Engage()
     # # nns.PlotVoltageTrace('test')
     # nns.PlotSpiketrain('test')
