@@ -12,3 +12,6 @@
 
 # remove cache files
 /*__pycache__
+
+# remove pycharm files
+/.idea
