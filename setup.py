@@ -13,7 +13,9 @@ setup(name='neuralnetsim',
       packages=['neuralnetsim'],
       url='https://github.com/Nathaniel-Rodriguez/neuralnetsim.git',
       install_requires=[
-          'numpy'
+          'numpy',
+          'infomap>=1.1.4',
+          'scipy'
       ],
       include_package_data=True,
       zip_safe=False)
