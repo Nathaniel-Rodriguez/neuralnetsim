@@ -11,7 +11,13 @@ def load_as_matrix(file_path: Path, key: str) -> np.ndarray:
     Opens and loads a matrix from a matlab file when given the data key.
     :param file_path: Path to a file containing a matrix.
     :param key: Key for the matrix.
-    :return: A 2D numpy array with the matrix elements.
+    :return: A an array of the data.
     """
-    return loadmat(str(file_path))[key]
+    mat = loadmat(str(file_path))
+    try:
+        return mat[key]
+    except KeyError as err:
+        print("Failed to find key:", key, "\n",
+              "The following keys are available:", list(mat.keys()))
+        raise err
 

@@ -1,9 +1,12 @@
-__all__ = ["get_network", "add_communities"]
+__all__ = ["get_network", "add_communities", "add_positions",
+           "build_graph_from_data"]
 
 
 import infomap
 import numpy as np
 import networkx as nx
+from pathlib import Path
+from neuralnetsim.data_loader import load_as_matrix
 
 
 def get_network(weight_matrix: np.ndarray,
@@ -55,3 +58,46 @@ def add_communities(graph: nx.DiGraph, seed=None,
     nx.set_node_attributes(graph, lonely_nodes, "level2")
 
     return graph
+
+
+def add_positions(graph: nx.DiGraph, xpos: np.ndarray,
+                  ypos: np.ndarray) -> nx.DiGraph:
+    """
+    Adds "pos" attributes to nodes from a position array.
+    :param graph: A networkx graph to add position attributes too.
+    :param xpos: A numpy array with x positions.
+    :param ypos: A numpy array with y positions.
+    :return: The provided graph, it is modified in-place.
+    """
+    if len(xpos) != len(ypos):
+        raise AttributeError("Unmatched x and y positions,"
+                             " with {0} x positions and {1} y positions".format(
+                                str(len(xpos)), str(len(ypos))))
+    nx.set_node_attributes(graph, {i: (xpos[i][0], ypos[i][0])
+                                   for i in range(xpos.shape[0])}, "pos")
+    return graph
+
+
+def build_graph_from_data(data_dir: Path,
+                          link_filename: str,
+                          weight_filename: str,
+                          pos_filename: str) -> nx.DiGraph:
+    """
+    Creates a returns a weighted-directed networkx graph representing the loaded
+    data. Includes node attributes of "level1" and "level2" for communities
+    and "pos" for x,y coordinates. Includes edge attributes of "weight" for
+    link weights.
+    :param data_dir: Location of the data files.
+    :param link_filename: Name of the file containing binary link matrix.
+    :param weight_filename: Name of the file containing TE weights.
+    :param pos_filename: Name of the file containing neuron x-y position.
+    :return: A networkx DiGraph built from the data.
+    """
+    return add_positions(
+        add_communities(
+            get_network(
+                load_as_matrix(data_dir.joinpath(weight_filename), "weights"),
+                load_as_matrix(data_dir.joinpath(link_filename), "pdf"))),
+        load_as_matrix(data_dir.joinpath(pos_filename), "x"),
+        load_as_matrix(data_dir.joinpath(pos_filename), "y")
+    )
