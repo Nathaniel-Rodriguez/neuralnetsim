@@ -42,4 +42,16 @@ def add_communities(graph: nx.DiGraph, seed=None,
     imap.run()
     nx.set_node_attributes(graph, imap.get_modules(depth_level=1), "level1")
     nx.set_node_attributes(graph, imap.get_modules(depth_level=2), "level2")
+
+    # give all community-less nodes a unique community
+    unique_module_counter = max(
+        max({m for i, m in graph.nodes.data("level1") if m is not None}),
+        max({m for i, m in graph.nodes.data("level2") if m is not None})
+    )
+    lonely_nodes = {node: unique_module_counter + i
+                    for i, node in enumerate({
+                        n for n, m, in graph.nodes.data("level1") if m is None})}
+    nx.set_node_attributes(graph, lonely_nodes, "level1")
+    nx.set_node_attributes(graph, lonely_nodes, "level2")
+
     return graph

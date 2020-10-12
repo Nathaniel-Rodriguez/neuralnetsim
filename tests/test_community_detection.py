@@ -21,5 +21,5 @@ class TestCommunityDetection(unittest.TestCase):
     def test_add_communities(self):
         graph = neuralnetsim.get_network(self.weight_mat, self.link_mat)
         neuralnetsim.add_communities(graph, seed=4953)
-        self.assertEqual(len({m for i, m in graph.nodes.data("level1")}), 20)
-        self.assertEqual(len({m for i, m in graph.nodes.data("level2")}), 2)
+        self.assertEqual(len({m for i, m in graph.nodes.data("level1")}), 74)
+        self.assertEqual(len({m for i, m in graph.nodes.data("level2")}), 57)
