@@ -10,7 +10,8 @@ from neuralnetsim.data_loader import load_as_matrix
 
 
 def get_network(weight_matrix: np.ndarray,
-                link_matrix: np.ndarray) -> nx.DiGraph:
+                link_matrix: np.ndarray,
+                **kwargs) -> nx.DiGraph:
     """
     Creates a networkx graph from loaded data.
     :param weight_matrix: A matrix of weights.
@@ -24,7 +25,7 @@ def get_network(weight_matrix: np.ndarray,
 
 
 def add_communities(graph: nx.DiGraph, seed=None,
-                    infomap_commands=None) -> nx.DiGraph:
+                    infomap_commands=None, **kwargs) -> nx.DiGraph:
     """
     Uses Infomap to detect communities in a given graph and then assigns
     those communities as an attribute to the nodes of graph called "level1"
@@ -81,7 +82,8 @@ def add_positions(graph: nx.DiGraph, xpos: np.ndarray,
 def build_graph_from_data(data_dir: Path,
                           link_filename: str,
                           weight_filename: str,
-                          pos_filename: str) -> nx.DiGraph:
+                          pos_filename: str,
+                          **kwargs) -> nx.DiGraph:
     """
     Creates a returns a weighted-directed networkx graph representing the loaded
     data. Includes node attributes of "level1" and "level2" for communities
@@ -91,13 +93,16 @@ def build_graph_from_data(data_dir: Path,
     :param link_filename: Name of the file containing binary link matrix.
     :param weight_filename: Name of the file containing TE weights.
     :param pos_filename: Name of the file containing neuron x-y position.
+    :param kwargs: Keyword arguments for get_network and add_communities.
     :return: A networkx DiGraph built from the data.
     """
     return add_positions(
         add_communities(
             get_network(
                 load_as_matrix(data_dir.joinpath(weight_filename), "weights"),
-                load_as_matrix(data_dir.joinpath(link_filename), "pdf"))),
+                load_as_matrix(data_dir.joinpath(link_filename), "pdf"),
+                **kwargs),
+            **kwargs),
         load_as_matrix(data_dir.joinpath(pos_filename), "x"),
         load_as_matrix(data_dir.joinpath(pos_filename), "y")
     )
