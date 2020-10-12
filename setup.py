@@ -16,7 +16,8 @@ setup(name='neuralnetsim',
       install_requires=[
           'numpy',
           'infomap>=1.1.4',
-          'scipy'
+          'scipy',
+          'networkx'
       ],
       include_package_data=False,
       zip_safe=False)
