@@ -1,0 +1,3 @@
+numpy
+infomap>=1.1.4
+scipy

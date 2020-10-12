@@ -17,5 +17,8 @@ setup(name='neuralnetsim',
           'infomap>=1.1.4',
           'scipy'
       ],
+      package_data={
+          'neuralnetsim': ['tests/test_data/*']
+      },
       include_package_data=True,
       zip_safe=False)
