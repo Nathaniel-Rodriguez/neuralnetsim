@@ -15,11 +15,12 @@ def plot_slice(graph: nx.DiGraph,
                save_dir: Path = Path.cwd(),
                prefix: str = ""):
     nx.draw_networkx_nodes(
-        graph, nx.get_node_attributes(graph, "pos"),
+        graph,
+        nx.get_node_attributes(graph, "pos"),
         list(nx.get_node_attributes(graph, color_key).values()),
         cmap=cm.Set1
     )
-    weights = np.array(nx.get_edge_attributes(graph, "weight").values())
+    weights = np.array(list(nx.get_edge_attributes(graph, "weight").values()))
     np.log(weights, out=weights)
     edges = nx.draw_networkx_edges(
         graph,
@@ -32,7 +33,8 @@ def plot_slice(graph: nx.DiGraph,
         edge_cmap=cm.Greys,
         width=2,
     )
-    edge_alphas = ECDF(weights)
+    ecdf = ECDF(weights)
+    edge_alphas = ecdf(weights)
     for i in range(len(edge_alphas)):
         edges[i].set_alpha(edge_alphas[i])
 
