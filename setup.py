@@ -17,7 +17,9 @@ setup(name='neuralnetsim',
           'numpy',
           'infomap>=1.1.4',
           'scipy',
-          'networkx'
+          'networkx',
+          'matplotlib',
+          'statsmodels'
       ],
       include_package_data=False,
       zip_safe=False)
