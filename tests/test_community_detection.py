@@ -34,6 +34,8 @@ class TestCommunityDetection(unittest.TestCase):
         graph = neuralnetsim.add_positions(graph, self.xpos, self.ypos)
         self.assertAlmostEqual(graph.nodes[0]["pos"][0], 446.5, 1)
         self.assertAlmostEqual(graph.nodes[0]["pos"][1], -45.01, 1)
+        for node in graph.nodes:
+            self.assertEqual(len(graph.nodes[node]['pos']), 2)
 
     def test_build_graph_from_data(self):
         self.assertTrue(resource_isdir("tests", "test_data"))
@@ -47,4 +49,5 @@ class TestCommunityDetection(unittest.TestCase):
         self.assertSetEqual(set(graph.nodes[0].keys()), {'level1', 'level2', 'pos'})
         self.assertEqual(graph.nodes[0]['level1'], 20)
         self.assertEqual(graph.nodes[0]['level2'], 20)
-        self.assertEqual(len(graph.nodes[0]['pos']), 2)
+        for node in graph.nodes:
+            self.assertEqual(len(graph.nodes[node]['pos']), 2)

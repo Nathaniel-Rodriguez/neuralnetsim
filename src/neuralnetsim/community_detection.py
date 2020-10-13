@@ -70,12 +70,16 @@ def add_positions(graph: nx.DiGraph, xpos: np.ndarray,
     :param ypos: A numpy array with y positions.
     :return: The provided graph, it is modified in-place.
     """
+    # For some reason data is stored as a (1xN) array
+    xpos = xpos.flatten()
+    ypos = ypos.flatten()
+
     if len(xpos) != len(ypos):
         raise AttributeError("Unmatched x and y positions,"
                              " with {0} x positions and {1} y positions".format(
                                 str(len(xpos)), str(len(ypos))))
-    nx.set_node_attributes(graph, {i: (xpos[i][0], ypos[i][0])
-                                   for i in range(xpos.shape[0])}, "pos")
+    nx.set_node_attributes(graph, {i: (xpos[i], ypos[i])
+                                   for i in range(len(xpos))}, "pos")
     return graph
 
 
