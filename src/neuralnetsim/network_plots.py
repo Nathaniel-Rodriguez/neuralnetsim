@@ -17,30 +17,31 @@ def plot_slice(graph: nx.DiGraph,
     nx.draw_networkx_nodes(
         graph,
         nx.get_node_attributes(graph, "pos"),
-        list(nx.get_node_attributes(graph, color_key).values()),
-        cmap=cm.Set1
+        node_color=list(nx.get_node_attributes(graph, color_key).values()),
+        node_size=20,
+        cmap=cm.Set1,
+        label=None,
+        linewidths=0.0
     )
     weights = np.array(list(nx.get_edge_attributes(graph, "weight").values()))
     np.log(weights, out=weights)
-    edges = nx.draw_networkx_edges(
-        graph,
-        nx.get_node_attributes(graph, "pos"),
-        arrowstyle="->",
-        arrowsize=10,
-        edge_color=weights,
-        edge_vmax=np.amax(weights),
-        edge_vmin=np.amin(weights),
-        edge_cmap=cm.Greys,
-        width=2,
-    )
     ecdf = ECDF(weights)
     edge_alphas = ecdf(weights)
-    for i in range(len(edge_alphas)):
-        edges[i].set_alpha(edge_alphas[i])
-
-    pc = mpl.collections.PatchCollection(edges, cmap=plt.cm.Greys)
-    pc.set_array(weights)
-    plt.colorbar(pc)
+    for i, edge in enumerate(graph.edges):
+        nx.draw_networkx_edges(
+            graph,
+            nx.get_node_attributes(graph, "pos"),
+            edgelist=[edge],
+            arrows=False,
+            arrowstyle="->",
+            arrowsize=1,
+            edge_color=[weights[i]],
+            edge_vmin=np.amin(weights),
+            edge_vmax=np.amax(weights),
+            edge_cmap=cm.Greys,
+            width=0.5,
+            alpha=edge_alphas[i]
+        )
 
     ax = plt.gca()
     ax.set_axis_off()
