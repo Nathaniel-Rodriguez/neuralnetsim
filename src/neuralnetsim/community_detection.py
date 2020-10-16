@@ -48,6 +48,7 @@ def add_communities(graph: nx.DiGraph, seed=None,
     those communities as an attribute to the nodes of graph called "level1"
     for first depth level modules and "level2" for second depth level modules.
     Note: Only adds communities to nodes present in the graph.
+    Note: Insensitive to node ID starting value or contiguity.
     :param graph: A weighted-directed networkx graph.
     :param seed: A seed for Infomap (default: None).
     :param infomap_commands: Optional command arguments for Infomap (default:
