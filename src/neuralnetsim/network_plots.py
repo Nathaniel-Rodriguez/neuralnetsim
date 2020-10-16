@@ -3,7 +3,6 @@ __all__ = ['plot_slice']
 
 import networkx as nx
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from pathlib import Path
