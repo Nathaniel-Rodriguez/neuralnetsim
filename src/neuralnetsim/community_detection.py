@@ -1,4 +1,5 @@
 __all__ = ["get_network", "add_communities", "add_positions",
+           "apply_weight_threshold",
            "build_graph_from_data"]
 
 
@@ -24,12 +25,29 @@ def get_network(weight_matrix: np.ndarray,
     return nx.from_numpy_matrix(adj_matrix, create_using=nx.DiGraph)
 
 
+def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0, **kwargs):
+    """
+    Applies a threshold to the graph based on the "weight" edge attribute.
+    :param graph: A networkx DiGraph.
+    :param threshold: A weight threshold (default: 0.0)
+    :return: The largest component of the resulting graph.
+    """
+    # threshold the edges
+    graph.remove_edges_from(
+        edge for edge, weight in nx.get_edge_attributes(graph, "weight").items()
+        if weight < threshold)
+    # make graph from largest connected component
+    return max([graph.subgraph(c) for c in nx.weakly_connected_components(graph)],
+               key=len).copy()
+
+
 def add_communities(graph: nx.DiGraph, seed=None,
                     infomap_commands=None, **kwargs) -> nx.DiGraph:
     """
     Uses Infomap to detect communities in a given graph and then assigns
     those communities as an attribute to the nodes of graph called "level1"
     for first depth level modules and "level2" for second depth level modules.
+    Note: Only adds communities to nodes present in the graph.
     :param graph: A weighted-directed networkx graph.
     :param seed: A seed for Infomap (default: None).
     :param infomap_commands: Optional command arguments for Infomap (default:
@@ -65,6 +83,7 @@ def add_positions(graph: nx.DiGraph, xpos: np.ndarray,
                   ypos: np.ndarray) -> nx.DiGraph:
     """
     Adds "pos" attributes to nodes from a position array.
+    Note: Only adds positions to the nodes present in the graph.
     :param graph: A networkx graph to add position attributes too.
     :param xpos: A numpy array with x positions.
     :param ypos: A numpy array with y positions.
@@ -97,16 +116,17 @@ def build_graph_from_data(data_dir: Path,
     :param link_filename: Name of the file containing binary link matrix.
     :param weight_filename: Name of the file containing TE weights.
     :param pos_filename: Name of the file containing neuron x-y position.
-    :param kwargs: Keyword arguments for get_network and add_communities.
+    :param kwargs: Keyword arguments for pre-processing.
     :return: A networkx DiGraph built from the data.
     """
     return add_positions(
         add_communities(
-            get_network(
-                load_as_matrix(data_dir.joinpath(weight_filename), "weights"),
-                load_as_matrix(data_dir.joinpath(link_filename), "pdf"),
-                **kwargs),
-            **kwargs),
+            apply_weight_threshold(
+                get_network(
+                    load_as_matrix(data_dir.joinpath(weight_filename), "weights"),
+                    load_as_matrix(data_dir.joinpath(link_filename), "pdf"),
+                    **kwargs),
+                **kwargs), **kwargs),
         load_as_matrix(data_dir.joinpath(pos_filename), "x"),
         load_as_matrix(data_dir.joinpath(pos_filename), "y")
     )

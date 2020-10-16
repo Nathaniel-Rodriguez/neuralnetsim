@@ -1,5 +1,6 @@
 import unittest
 import neuralnetsim
+import networkx as nx
 from pkg_resources import resource_filename
 from pkg_resources import resource_isdir
 from pathlib import Path
@@ -37,6 +38,24 @@ class TestCommunityDetection(unittest.TestCase):
         for node in graph.nodes:
             self.assertEqual(len(graph.nodes[node]['pos']), 2)
 
+    def test_apply_weight_threshold(self):
+        graph = neuralnetsim.get_network(self.weight_mat, self.link_mat)
+        graph = neuralnetsim.apply_weight_threshold(graph)
+        self.assertEqual(nx.number_weakly_connected_components(graph), 1)
+
+        graph = neuralnetsim.get_network(self.weight_mat, self.link_mat)
+        graph = neuralnetsim.apply_weight_threshold(graph, 200.0)
+        self.assertEqual(len(graph), 1)
+
+        graph = nx.DiGraph()
+        graph.add_edge(1, 2, weight=0.1)
+        graph.add_edge(1, 3, weight=0.2)
+        graph.add_edge(1, 4, weight=0.3)
+        graph = neuralnetsim.apply_weight_threshold(graph, 0.0)
+        self.assertEqual(len(graph), 4)
+        graph = neuralnetsim.apply_weight_threshold(graph, 0.15)
+        self.assertEqual(len(graph), 3)
+
     def test_build_graph_from_data(self):
         self.assertTrue(resource_isdir("tests", "test_data"))
         data_dir = resource_filename("tests", "test_data")
@@ -44,10 +63,10 @@ class TestCommunityDetection(unittest.TestCase):
             Path(data_dir),
             "pdf",
             "weights",
-            "xy"
+            "xy",
         )
-        self.assertSetEqual(set(graph.nodes[0].keys()), {'level1', 'level2', 'pos'})
-        self.assertEqual(graph.nodes[0]['level1'], 20)
-        self.assertEqual(graph.nodes[0]['level2'], 20)
+        self.assertSetEqual(set(k for node in graph.nodes
+                                for k in graph.nodes[node].keys()),
+                            {'level1', 'level2', 'pos'})
         for node in graph.nodes:
             self.assertEqual(len(graph.nodes[node]['pos']), 2)
