@@ -25,7 +25,7 @@ def get_network(weight_matrix: np.ndarray,
     return nx.from_numpy_matrix(adj_matrix, create_using=nx.DiGraph)
 
 
-def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0, **kwargs):
+def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0, **kwargs) -> nx.DiGraph:
     """
     Applies a threshold to the graph based on the "weight" edge attribute.
     :param graph: A networkx DiGraph.
