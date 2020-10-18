@@ -18,6 +18,18 @@ class CoolingSchedule(ABC):
         """
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def t(self):
+        """
+        Returns the current temperature.
+        """
+        raise NotImplementedError
+
+    @t.setter
+    def t(self, v):
+        raise NotImplementedError
+
 
 class ExponentialCoolingSchedule(CoolingSchedule):
     """
@@ -55,10 +67,6 @@ class ExponentialCoolingSchedule(CoolingSchedule):
     @property
     def t(self):
         return self._t
-
-    @t.setter
-    def t(self, value):
-        raise NotImplementedError
 
 
 class AdaptiveCoolingSchedule(CoolingSchedule):
@@ -130,10 +138,6 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
     @property
     def t(self):
         return self._tc
-
-    @t.setter
-    def t(self, value):
-        raise NotImplementedError
 
     @property
     def record(self):
