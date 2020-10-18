@@ -13,6 +13,17 @@ def plot_slice(graph: nx.DiGraph,
                color_key: str = "level2",
                save_dir: Path = Path.cwd(),
                prefix: str = ""):
+    """
+    Creates a pdf plot of the neural slice with nodes colored by community and
+    positioned from data which requires the node "pos" attribute. Edges
+    require the "weight" attribute.
+    :param graph: A networkx graph with "pos" node attribute and edge "weight"
+                  attributes.
+    :param color_key: The community key for node coloring.
+    :param save_dir: Directory to save the plot into.
+    :param prefix: A prefix to prepend to the plot name.
+    :return: None
+    """
     nx.draw_networkx_nodes(
         graph,
         nx.get_node_attributes(graph, "pos"),
