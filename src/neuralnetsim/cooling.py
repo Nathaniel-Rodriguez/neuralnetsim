@@ -41,7 +41,7 @@ class ExponentialCoolingSchedule(CoolingSchedule):
         self._t = t0
         self._step = 0
 
-    def step(self, energy: float) -> float:
+    def step(self, energy: None = float) -> float:
         """
         Increments the cooling schedule.
         :param energy: Unused for this scheduler.
@@ -49,6 +49,7 @@ class ExponentialCoolingSchedule(CoolingSchedule):
         """
         if (self._step > self.start) and (self._step < self.stop):
             self._t = self.t0 * (self.cooling_factor ** (self._step - self.start))
+        self._step += 1
         return self._t
 
     @property
@@ -156,14 +157,15 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         # stop updating after the stop period
         if ((self._step_count < self._hold_window)
                 or (self._step_count < self._start)):
-            self._step_count += 1
             self._t_log.append(self._tc)
-            return self._tc
+            tc = self._tc
         elif (self._tc >= self._tmin) and (self._step_count < self._stop):
-            return self._update_temperature()
+            tc = self._update_temperature()
         else:
             self._t_log.append(self._tc)
-            return self._tc
+            tc = self._tc
+        self._step_count += 1
+        return tc
 
     def _update_temperature(self) -> float:
         # update weights
