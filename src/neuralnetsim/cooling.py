@@ -83,20 +83,17 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
     def __init__(self,
                  t0: float,
                  cooling_factor: float,
-                 start: int = 0,
-                 stop: int = inf,
-                 tmin: float = 0.0,
                  max_estimate_window: int = 10000,
                  decay_factor: float = 1.0,
-                 hold_window: int = 100):
+                 hold_window: int = 100,
+                 start: int = 0,
+                 stop: int = inf,
+                 tmin: float = 0.0):
         """
         :param t0: initial temperature
         :param cooling_factor: determines how quickly the cooling rate can
         change. A high value means fast change, while a low value means
         changes will be slow. Value is bound between [0,inf].
-        :param start: The annealing step at which to begin cooling.
-        :param stop: The annealing step at which to halt cooling.
-        :param tmin: the minimum allowed temperature. Default 0.0
         :param max_estimate_window: the maximum allowed history to record.
         :param decay_factor: how strongly to penalize energy contributions from
         temperatures different from the current temperature when estimating
@@ -107,6 +104,10 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         temperature. Since one sample is gained each step, this equates to the
         number of samples that will be used to generate the first heat
         capacity estimate.
+        :param start: The annealing step at which to begin cooling.
+        :param stop: The annealing step at which to halt cooling.
+        :param tmin: the minimum allowed temperature. Default 0.0
+
         """
         self._t0 = t0  # initial temperature
         self._tc = self._t0  # current temperature
@@ -115,7 +116,7 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         self._g = cooling_factor
         self._tmin = tmin  # minimum temperature
         self._decay_factor = decay_factor
-        self._t_log = [self._t0]  # log of annealed temperatures
+        self._t_record = [self._t0]  # log of annealed temperatures
         self._hold_window = hold_window  # how long to wait till t updates
         self._step_count = 0
 
@@ -135,11 +136,27 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         raise NotImplementedError
 
     @property
-    def log(self):
-        return self._t_log
+    def record(self):
+        return self._t_record
 
-    @log.setter
-    def log(self, value):
+    @record.setter
+    def record(self, value):
+        raise NotImplementedError
+
+    @property
+    def ehistory(self):
+        return self._e_history
+
+    @ehistory.setter
+    def ehistory(self, value):
+        raise NotImplementedError
+
+    @property
+    def thistory(self):
+        return self._t_history
+
+    @thistory.setter
+    def thistory(self, value):
         raise NotImplementedError
 
     def step(self, energy: float) -> float:
@@ -157,12 +174,12 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         # stop updating after the stop period
         if ((self._step_count < self._hold_window)
                 or (self._step_count < self._start)):
-            self._t_log.append(self._tc)
+            self._t_record.append(self._tc)
             tc = self._tc
         elif (self._tc >= self._tmin) and (self._step_count < self._stop):
             tc = self._update_temperature()
         else:
-            self._t_log.append(self._tc)
+            self._t_record.append(self._tc)
             tc = self._tc
         self._step_count += 1
         return tc
@@ -196,5 +213,7 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
             self._tc = self._tc * math.exp(-self._g * self._tc / weighted_e_std)
         else:
             self._tc = self._tc
-        self._t_log.append(self._tc)
+        if self._tc < self._tmin:
+            self._tc = self._tmin
+        self._t_record.append(self._tc)
         return self._tc
