@@ -68,6 +68,7 @@ class NetworkAnnealer:
         self._history = []
         self._acceptance_history = []
         self._graph = None
+        self._adj_mat = None
 
     def _scramble(self, num_edges, num_nodes, adj_mat, edges):
         # Pick random edge to move
@@ -110,26 +111,35 @@ class NetworkAnnealer:
         self._graph = graph
         num_edges = self._graph.number_of_edges()
         num_nodes = self._graph.number_of_nodes()
-        adj_mat = nx.to_numpy_array(self._graph)
-        edges = np.argwhere(adj_mat).tolist()
-        self._energy = self._energy_function(adj_mat)
+        self._adj_mat = nx.to_numpy_array(self._graph)
+        edges = np.argwhere(self._adj_mat).tolist()
+        self._energy = self._energy_function(self._adj_mat)
         self._history.append(self._energy)
 
         for i in range(self.num_scramble_steps):
             self._energy = self._scramble(num_edges, num_nodes,
-                                          adj_mat, edges).energy
+                                          self._adj_mat, edges).energy
             self._history.append(self._energy)
 
         for i in range(self.num_steps):
             self._energy = self._anneal(
-                adj_mat, edges, *self._scramble(
-                    num_edges, num_nodes, adj_mat, edges))
+                self._adj_mat, edges, *self._scramble(
+                    num_edges, num_nodes, self._adj_mat, edges))
             self._history.append(self._energy)
 
         return self
 
     def predict(self) -> nx.DiGraph:
-        pass
+        result_graph = nx.from_numpy_array(self._adj_mat, create_using=nx.DiGraph)
+        # relabel graph so that it aligns with result_graph node IDs then
+        # assign over all node attributes from the original graph to the new one
+        relabelled_graph = nx.convert_node_labels_to_integers(self._graph)
+        node_attrib_keys = set([k for n in relabelled_graph.nodes
+                                for k in relabelled_graph.nodes[n].keys()])
+        for key in node_attrib_keys:
+            nx.set_node_attributes(result_graph,
+                                   nx.get_node_attributes(relabelled_graph, key))
+        return result_graph
 
     def fit_predict(self, graph: nx.DiGraph) -> nx.DiGraph:
         return self.fit(graph).predict()
