@@ -1,4 +1,4 @@
-__all__ = ["NetworkAnnealer"]
+__all__ = ["NetworkAnnealer", "NetworkAnnealerDebug"]
 
 
 import numpy as np
@@ -65,8 +65,6 @@ class NetworkAnnealer:
         self._cooling_schedule = cooling_schedule
         self._energy_function = energy_function
         self._energy = None
-        self._history = []
-        self._acceptance_history = []
         self._graph = None
         self._adj_mat = None
 
@@ -93,14 +91,11 @@ class NetworkAnnealer:
                 destination_edge, destination_exists):
         energy_diff = energy - self._energy
         if energy_diff < 0:
-            self._acceptance_history.append(1)
             accepted_energy = energy
         else:
             if self._rng.random() < math.exp(-energy_diff / self._cooling_schedule.t):
                 accepted_energy = energy
-                self._acceptance_history.append(1)
             else:
-                self._acceptance_history.append(0)
                 edge_swap(adj_mat, edges, source_index,
                           destination_edge, source_edge, destination_exists)
                 accepted_energy = self._energy
@@ -114,18 +109,15 @@ class NetworkAnnealer:
         self._adj_mat = nx.to_numpy_array(self._graph)
         edges = np.argwhere(self._adj_mat).tolist()
         self._energy = self._energy_function(self._adj_mat)
-        self._history.append(self._energy)
 
         for i in range(self.num_scramble_steps):
             self._energy = self._scramble(num_edges, num_nodes,
                                           self._adj_mat, edges).energy
-            self._history.append(self._energy)
 
         for i in range(self.num_steps):
             self._energy = self._anneal(
                 self._adj_mat, edges, *self._scramble(
                     num_edges, num_nodes, self._adj_mat, edges))
-            self._history.append(self._energy)
 
         return self
 
@@ -160,18 +152,20 @@ class NetworkAnnealer:
     def energy_function(self, value):
         raise NotImplementedError
 
+
+class NetworkAnnealerDebug(NetworkAnnealer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._history = []
+
+    def _scramble(self, *args, **kwargs):
+        self._history.append(self._energy)
+        super()._scramble(*args, **kwargs)
+
     @property
     def energy_history(self):
         return self._history
 
     @energy_history.setter
     def energy_history(self, v):
-        raise NotImplementedError
-
-    @property
-    def acceptance_history(self):
-        return self._acceptance_history
-
-    @acceptance_history.setter
-    def acceptance_history(self, v):
         raise NotImplementedError
