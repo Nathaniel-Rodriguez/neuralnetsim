@@ -1,4 +1,4 @@
-__all__ = ["NetworkAnnealer", "NetworkAnnealerDebug"]
+__all__ = ["NetworkAnnealer", "NetworkAnnealerDebug", "edge_swap"]
 
 
 import numpy as np
@@ -219,7 +219,7 @@ class NetworkAnnealerDebug(NetworkAnnealer):
 
     def _scramble(self, *args, **kwargs):
         self._history.append(self._energy)
-        super()._scramble(*args, **kwargs)
+        return super()._scramble(*args, **kwargs)
 
     @property
     def energy_history(self):
