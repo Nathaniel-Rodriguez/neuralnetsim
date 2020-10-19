@@ -209,6 +209,10 @@ class NetworkAnnealer:
 
 
 class NetworkAnnealerDebug(NetworkAnnealer):
+    """
+    A NetworkAnnealer that keeps a log of the energy history through the
+    annealing process. Exposed as the energy_history property.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._history = []
