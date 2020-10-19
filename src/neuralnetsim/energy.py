@@ -8,7 +8,6 @@ import numpy as np
 import networkx as nx
 from scipy.stats import wasserstein_distance
 from neuralnetsim import create_bridge_mask
-from neuralnetsim import create_log_matrix
 
 
 class ModularityEnergyFunction:
@@ -103,12 +102,42 @@ class NeuronalStrengthDifferenceEnergyFunction:
 
 
 class NeuralEnergyFunction:
+    """
+    Evaluates all three network energy functions: Modularity,
+     strength distributions, and in- out- strength.
+    """
     def __init__(self,
-                 modularity_energy_function: ModularityEnergyFunction,
-                 strength_dist_energy_function: StrengthDistributionEnergyFunction,
-                 strength_difference_energy_function: NeuronalStrengthDifferenceEnergyFunction,
-                 ):
-        pass
+                 graph: nx.DiGraph,
+                 target_modularity: float,
+                 community_key: str,
+                 modularity_weight: float = 1.0,
+                 strength_dist_weight: float = 1.0,
+                 strength_difference_weight: float = 1.0):
+        """
+        :param graph: The original graph that the energy functions will be
+        applied too.
+        :param target_modularity: The target modularity.
+        :param community_key: The graph node key for communities.
+        :param modularity_weight: Scale factor for modularity energy.
+        :param strength_dist_weight: Scale factor for strength distribution
+        energy.
+        :param strength_difference_weight: Scale factor for in/out node strength
+        difference energy.
+        """
+        self.modularity_weight = modularity_weight
+        self.strength_dist_weight = strength_dist_weight
+        self.strength_difference_weight = strength_difference_weight
+        self.modularity_energy_function = ModularityEnergyFunction(
+            graph, target_modularity, community_key)
+        self.strength_dist_energy_function = StrengthDistributionEnergyFunction(graph)
+        self.strength_difference_energy_function = NeuronalStrengthDifferenceEnergyFunction()
 
     def __call__(self, matrix: np.ndarray) -> float:
-        pass
+        """
+        Evaluates the energy.
+        :param matrix: An adjacency matrix.
+        :return: The energy of the network.
+        """
+        return self.modularity_weight * self.modularity_energy_function(matrix) \
+               + self.strength_dist_weight * self.strength_dist_energy_function(matrix) \
+               + self.strength_difference_weight * self.strength_difference_energy_function(matrix)

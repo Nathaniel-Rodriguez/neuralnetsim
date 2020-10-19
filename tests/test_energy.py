@@ -56,3 +56,27 @@ class TestNeuronalStrengthDifferenceEnergyFunction(unittest.TestCase):
         graph.remove_edge(1, 2)
         mat = nx.to_numpy_array(graph)
         self.assertGreater(efunc(mat), 0.0)
+
+
+class TestNeuralEnergyFunction(unittest.TestCase):
+    def test_energy_evaluation(self):
+        graph = nx.DiGraph()
+        graph.add_node(1, com=1)
+        graph.add_node(2, com=1)
+        graph.add_node(3, com=1)
+        graph.add_node(4, com=1)
+        graph.add_edge(1, 2, weight=1)
+        graph.add_edge(2, 1, weight=1)
+        graph.add_edge(3, 4, weight=1)
+        graph.add_edge(4, 3, weight=1)
+        graph.add_edge(1, 4, weight=1)
+
+        func1 = neuralnetsim.NeuronalStrengthDifferenceEnergyFunction()
+        func2 = neuralnetsim.StrengthDistributionEnergyFunction(graph)
+        func3 = neuralnetsim.ModularityEnergyFunction(graph, 0.5, "com")
+        efunc = neuralnetsim.NeuralEnergyFunction(graph, 0.5, "com")
+        mat = nx.to_numpy_array(graph)
+        self.assertAlmostEqual(efunc(mat), func1(mat) + func2(mat) + func3(mat))
+        graph.remove_edge(1, 2)
+        mat = nx.to_numpy_array(graph)
+        self.assertAlmostEqual(efunc(mat), func1(mat) + func2(mat) + func3(mat))
