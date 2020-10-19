@@ -22,6 +22,16 @@ def edge_swap(matrix: np.ndarray,
               source_edge: Tuple[int, int],
               destination_edge: Tuple[int, int],
               destination_exists: bool) -> np.ndarray:
+    """
+    Swaps an edge in an adjacency matrix.
+    :param matrix: The matrix for the swap, a 2-d numpy array.
+    :param edges: A list of edges.
+    :param source_index: Index of source edge in edges list.
+    :param source_edge: Source edge for swap.
+    :param destination_edge: Destination edge for swap.
+    :param destination_exists: Whether the destination edge exists or not (bool)
+    :return: The adjacency matrix swapped in-place.
+    """
     # swap elements in matrix
     matrix[source_edge[0], source_edge[1]], \
     matrix[destination_edge[0], destination_edge[1]] = \
@@ -68,7 +78,18 @@ class NetworkAnnealer:
         self._graph = None
         self._adj_mat = None
 
-    def _scramble(self, num_edges, num_nodes, adj_mat, edges):
+    def _scramble(self, num_edges: int,
+                  num_nodes: int,
+                  adj_mat: np.ndarray,
+                  edges: List[Tuple[int, int]]) -> SwapResult:
+        """
+        Applies a perturbation for the annealing algorithm.
+        :param num_edges: The number of edges in the network.
+        :param num_nodes: The number of nodes in the network.
+        :param adj_mat: The adjacency matrix of the network.
+        :param edges: The edge list of the network.
+        :return: A SwapResult.
+        """
         # Pick random edge to move
         source_index = self._rng.randrange(num_edges)
         source_edge = edges[source_index]
@@ -87,8 +108,24 @@ class NetworkAnnealer:
         return SwapResult(energy, source_index, source_edge,
                           destination_edge, destination_exists)
 
-    def _anneal(self, adj_mat, edges, energy, source_index, source_edge,
-                destination_edge, destination_exists):
+    def _anneal(self, adj_mat: np.ndarray, edges: List[Tuple[int, int]],
+                energy: float, source_index: int, source_edge: Tuple[int, int],
+                destination_edge: Tuple[int, int],
+                destination_exists: bool) -> float:
+        """
+        Applies the annealing process to the perturbed network. Accepts
+        when energy is lowered or for a given probability that is temperature
+        dependent. Steps the cooling algorithm.
+        :param adj_mat: The adjacency matrix of the network.
+        :param edges: The edge list of the network.
+        :param energy: The energy calculated for the perturbation applied by the
+        scramble method.
+        :param source_index: Index of source edge in edges list.
+        :param source_edge: Source edge used for the perturbation.
+        :param destination_edge: Destination edge used for the perturbation.
+        :param destination_exists: bool.
+        :return: The accepted energy.
+        """
         energy_diff = energy - self._energy
         if energy_diff < 0:
             accepted_energy = energy
@@ -103,6 +140,11 @@ class NetworkAnnealer:
         return accepted_energy
 
     def fit(self, graph: nx.DiGraph):
+        """
+        Applies the annealing algorithm to a given network.
+        :param graph: The network to apply annealing too.
+        :return: self
+        """
         self._graph = graph
         num_edges = self._graph.number_of_edges()
         num_nodes = self._graph.number_of_nodes()
@@ -122,18 +164,31 @@ class NetworkAnnealer:
         return self
 
     def predict(self) -> nx.DiGraph:
+        """
+        Generates a new graph resulting from the annealing process.
+        This graph will share all node attributes and ids as the original graph.
+        :return: A result graph.
+        """
         result_graph = nx.from_numpy_array(self._adj_mat, create_using=nx.DiGraph)
         # relabel graph so that it aligns with result_graph node IDs then
         # assign over all node attributes from the original graph to the new one
-        relabelled_graph = nx.convert_node_labels_to_integers(self._graph)
-        node_attrib_keys = set([k for n in relabelled_graph.nodes
-                                for k in relabelled_graph.nodes[n].keys()])
+        label_map = {i: original
+                     for i, original in enumerate(self._graph.nodes())}
+        nx.relabel_nodes(result_graph, label_map, copy=False)
+        node_attrib_keys = set([k for n in self._graph.nodes
+                                for k in self._graph.nodes[n].keys()])
         for key in node_attrib_keys:
             nx.set_node_attributes(result_graph,
-                                   nx.get_node_attributes(relabelled_graph, key))
+                                   nx.get_node_attributes(self._graph, key))
         return result_graph
 
     def fit_predict(self, graph: nx.DiGraph) -> nx.DiGraph:
+        """
+        Applies the annealing process and then generates a new graph resulting
+        from the annealing process. This graph will share all node attributes
+        and ids as the original graph.
+        :return: A result graph.
+        """
         return self.fit(graph).predict()
 
     @property
