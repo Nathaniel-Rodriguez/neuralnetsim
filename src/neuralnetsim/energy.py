@@ -1,16 +1,14 @@
 __all__ = ["ModularityEnergyFunction",
            "StrengthDistributionEnergyFunction",
            "NeuronalStrengthDifferenceEnergyFunction",
-           "NeuralEnergyFunction",
-           "CompositeEnergyFunction"]
+           "NeuralEnergyFunction"]
 
 
 import numpy as np
 import networkx as nx
+from scipy.stats import wasserstein_distance
 from neuralnetsim import create_bridge_mask
 from neuralnetsim import create_log_matrix
-from typing import List
-from typing import Callable
 
 
 class ModularityEnergyFunction:
@@ -35,7 +33,7 @@ class ModularityEnergyFunction:
         self._total_edge_weight = sum(nx.get_edge_attributes(graph, "weight").values())
         self._history = []
 
-    def __call__(self, matrix: np.ndarray, log_matrix: np.ndarray = None) -> float:
+    def __call__(self, matrix: np.ndarray) -> float:
         """
         Calculates the new energy given an adjacency matrix. Uses the square
         of the difference between the current and target modularity.
@@ -57,19 +55,51 @@ class ModularityEnergyFunction:
 
 
 class StrengthDistributionEnergyFunction:
+    """
+    Evaluates the network energy associated with the nodal strength distribution
+    for in-degree and out-degree. The energy is calculated using the
+    Wasserstein distance applied to the logarithm of the strengths.
+    """
     def __init__(self, graph: nx.DiGraph):
-        pass
+        """
+        :param graph: The original graph that will be used as the basis for
+        assessing the target in-strength distribution and out-strength
+        distribution.
+        """
+        self._target_in_strength_distribution = \
+            np.sum(nx.to_numpy_array(graph), axis=0)
+        self._target_out_strength_distribution = \
+            np.sum(nx.to_numpy_array(graph), axis=1)
 
-    def __call__(self, matrix: np.ndarray, log_matrix: np.ndarray) -> float:
-        pass
+    def __call__(self, matrix: np.ndarray) -> float:
+        """
+        Evaluates the energy.
+        :param matrix: An logged or non-logged adjacency matrix.
+        :return: The energy of the matrix.
+        """
+        in_strength_distribution = np.sum(matrix, axis=0)
+        out_strength_distribution = np.sum(matrix, axis=1)
+        return wasserstein_distance(in_strength_distribution,
+                                    self._target_in_strength_distribution) \
+               + wasserstein_distance(out_strength_distribution,
+                                      self._target_out_strength_distribution)
 
 
 class NeuronalStrengthDifferenceEnergyFunction:
-    def __init__(self, graph: nx.DiGraph):
-        pass
-
-    def __call__(self, matrix: np.ndarray, log_matrix: np.ndarray) -> float:
-        pass
+    """
+    Evaluate the network energy associated with the neural differences in
+    in- and out- strength of a given neuron. These two values are close to the
+    same for any given neuron. In order to preserve this nodal associativity
+    the difference between neuron in-strengths and out-strengths is taken.
+    If near zero, then it matches with expectations.
+    """
+    def __call__(self, matrix: np.ndarray) -> float:
+        """
+        Evaluates the energy.
+        :param matrix: An logged or non-logged adjacency matrix.
+        :return: The energy of the matrix.
+        """
+        return np.mean(np.power(np.sum(matrix - matrix.T, axis=1), 2))
 
 
 class NeuralEnergyFunction:
@@ -80,15 +110,5 @@ class NeuralEnergyFunction:
                  ):
         pass
 
-    def __call__(self, matrix: np.ndarray, log_matrix: np.ndarray) -> float:
-        pass
-
-
-class CompositeEnergyFunction:
-    def __init__(self,
-                 energy_functions: List[Callable[[np.ndarray, np.ndarray], float]],
-                 weightings: List[float]):
-        pass
-
-    def __call__(self, matrix: np.ndarray, log_matrix: np.ndarray) -> float:
+    def __call__(self, matrix: np.ndarray) -> float:
         pass
