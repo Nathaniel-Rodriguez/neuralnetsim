@@ -27,15 +27,20 @@ def create_bridge_mask(graph: nx.DiGraph, key: str) -> np.ndarray:
     return bridge_matrix != 0
 
 
-def create_log_matrix(adj_matrix: np.ndarray) -> np.ndarray:
+def create_log_matrix(adj_matrix: np.ndarray, out: np.ndarray = None) -> np.ndarray:
     """
-    Creates a copy of the adjacency matrix with log applied element-wise.
+    Creates a an adjacency matrix with log applied element-wise.
     Zero entries are excluded. Does not raise exceptions for negative entries.
     Check for NaN in these cases.
     :param adj_matrix: An adjacency matrix.
-    :return: The logged matrix copy.
+    :param out: An optional output matrix (default: None).
+    :return: The logged matrix. If out is not specified a copy is created.
     """
-    log_matrix = adj_matrix.copy()
+    if out is None:
+        log_matrix = adj_matrix.copy()
+    else:
+        log_matrix = out
+        log_matrix[:] = adj_matrix[:]
     non_zero_mask = adj_matrix != 0
     log_matrix[non_zero_mask] = np.log(adj_matrix[non_zero_mask])
     return log_matrix

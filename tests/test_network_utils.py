@@ -32,3 +32,13 @@ class TestNetworkUtils(unittest.TestCase):
         self.assertAlmostEqual(log_mat[0, 1], np.log(1.0))
         self.assertAlmostEqual(log_mat[1, 0], np.log(10.0))
         self.assertAlmostEqual(log_mat[1, 1], np.log(100.0))
+
+    def test_create_log_matrix_out(self):
+        mat = np.array([[0.0, 1.0],
+                        [10.0, 100.0]])
+        out = np.zeros((2, 2))
+        neuralnetsim.create_log_matrix(mat, out)
+        self.assertAlmostEqual(out[0, 0], 0.0)
+        self.assertAlmostEqual(out[0, 1], np.log(1.0))
+        self.assertAlmostEqual(out[1, 0], np.log(10.0))
+        self.assertAlmostEqual(out[1, 1], np.log(100.0))
