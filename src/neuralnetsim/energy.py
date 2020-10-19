@@ -1,7 +1,12 @@
 __all__ = ["ModularityEnergyFunction",
            "StrengthDistributionEnergyFunction",
            "NeuronalStrengthDifferenceEnergyFunction",
-           "NeuralEnergyFunction"]
+           "NeuralEnergyFunction",
+           "HistoryMixin",
+           "ModularityEnergyFunctionDebug",
+           "StrengthDistributionEnergyFunctionDebug",
+           "NeuronalStrengthDifferenceEnergyFunctionDebug",
+           "NeuralEnergyFunctionDebug"]
 
 
 import numpy as np
@@ -30,7 +35,6 @@ class ModularityEnergyFunction:
         self.community_key = community_key
         self._bridge_mask = create_bridge_mask(graph, community_key)
         self._total_edge_weight = sum(nx.get_edge_attributes(graph, "weight").values())
-        self._history = []
 
     def __call__(self, matrix: np.ndarray) -> float:
         """
@@ -41,16 +45,7 @@ class ModularityEnergyFunction:
         :return: The energy of the network.
         """
         modularity = np.sum(matrix[self._bridge_mask]) / self._total_edge_weight
-        self._history.append(modularity)
         return (self.target_modularity - modularity) ** 2
-
-    @property
-    def history(self):
-        return self._history
-
-    @history.setter
-    def history(self, v):
-        raise NotImplementedError
 
 
 class StrengthDistributionEnergyFunction:
@@ -92,6 +87,8 @@ class NeuronalStrengthDifferenceEnergyFunction:
     the difference between neuron in-strengths and out-strengths is taken.
     If near zero, then it matches with expectations.
     """
+
+    # noinspection PyTypeChecker
     def __call__(self, matrix: np.ndarray) -> float:
         """
         Evaluates the energy.
@@ -141,3 +138,47 @@ class NeuralEnergyFunction:
         return self.modularity_weight * self.modularity_energy_function(matrix) \
                + self.strength_dist_weight * self.strength_dist_energy_function(matrix) \
                + self.strength_difference_weight * self.strength_difference_energy_function(matrix)
+
+
+class HistoryMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._history = []
+
+    # noinspection PyUnresolvedReferences
+    def __call__(self, matrix: np.ndarray) -> float:
+        energy = super().__call__(matrix)
+        self._history.append(energy)
+        return energy
+
+    @property
+    def history(self):
+        return self._history
+
+    @history.setter
+    def history(self, v):
+        raise NotImplementedError
+
+
+class ModularityEnergyFunctionDebug(HistoryMixin, ModularityEnergyFunction):
+    pass
+
+
+class StrengthDistributionEnergyFunctionDebug(HistoryMixin, StrengthDistributionEnergyFunction):
+    pass
+
+
+class NeuronalStrengthDifferenceEnergyFunctionDebug(HistoryMixin, NeuronalStrengthDifferenceEnergyFunction):
+    pass
+
+
+class NeuralEnergyFunctionDebug(HistoryMixin, NeuralEnergyFunction):
+    def __int__(self, graph: nx.DiGraph,
+                target_modularity: float,
+                community_key: str,
+                *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.modularity_energy_function = ModularityEnergyFunctionDebug(
+            graph, target_modularity, community_key)
+        self.strength_dist_energy_function = StrengthDistributionEnergyFunctionDebug(graph)
+        self.strength_difference_energy_function = NeuronalStrengthDifferenceEnergyFunctionDebug()
