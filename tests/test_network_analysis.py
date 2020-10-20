@@ -53,3 +53,22 @@ class TestNetworkAnalysis(unittest.TestCase):
         self.assertAlmostEqual(out_data[1], 2.0)
         self.assertAlmostEqual(out_data[2], 1.5)
         self.assertAlmostEqual(out_data[3], 2.0)
+
+    def test_calc_nodal_strength_difference_distribution(self):
+        graph = nx.DiGraph()
+        graph.add_node(1, com=1)
+        graph.add_node(2, com=1)
+        graph.add_node(3, com=2)
+        graph.add_node(4, com=3)
+        graph.add_edge(1, 2, weight=1.0)
+        graph.add_edge(2, 1, weight=1.0)
+        graph.add_edge(2, 3, weight=1.0)
+        graph.add_edge(3, 4, weight=1.5)
+        graph.add_edge(4, 1, weight=2.0)
+
+        out_data = neuralnetsim.calc_nodal_strength_difference_distribution(graph)
+        # out - in
+        self.assertAlmostEqual(out_data[0], -2.0)
+        self.assertAlmostEqual(out_data[1], 1.0)
+        self.assertAlmostEqual(out_data[2], 0.5)
+        self.assertAlmostEqual(out_data[3], 0.5)
