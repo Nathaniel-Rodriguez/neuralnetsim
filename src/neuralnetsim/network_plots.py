@@ -4,9 +4,13 @@ __all__ = ['plot_slice']
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn
 from matplotlib import cm
 from pathlib import Path
 from statsmodels.distributions.empirical_distribution import ECDF
+from typing import List
+from neuralnetsim import calc_strength_distribution
 
 
 def plot_slice(graph: nx.DiGraph,
@@ -58,3 +62,33 @@ def plot_slice(graph: nx.DiGraph,
     plt.savefig(save_dir.joinpath(prefix + "_slice.pdf"))
     plt.close()
     plt.clf()
+
+
+def plot_strength_distributions(original_graph: nx.DiGraph,
+                                comparison_graphs: List[nx.DiGraph],
+                                direction="in",
+                                save_dir: Path = Path.cwd(),
+                                prefix: str = ""):
+    original_dist = calc_strength_distribution(original_graph, direction)
+    comparison_dists = [calc_strength_distribution(alt_graph, direction)
+                        for alt_graph in comparison_graphs]
+
+    for dist in comparison_dists:
+        ecdf = ECDF(dist)
+        x = np.sort(dist)
+        y = ecdf(x)
+        plt.plot(x, y, c="grey", alpha=0.1, lw=0.5)
+
+    ecdf = ECDF(original_dist)
+    x = np.sort(original_dist)
+    y = ecdf(x)
+    plt.plot(x, y, c=seaborn.color_palette("tab10")[0], lw=2)
+    alt_patch = mpatches.Patch(color='grey', label='Generated Graphs')
+    orig_patch = mpatches.Patch(color=seaborn.color_palette("tab10")[0],
+                                label='Original')
+    plt.legend(handles=[orig_patch, alt_patch])
+    plt.tight_layout()
+    plt.xlabel("weight")
+    plt.ylabel("CCDF")
+    plt.savefig(save_dir.joinpath(
+        prefix + "_" + direction + "_strength_dist.pdf"))
