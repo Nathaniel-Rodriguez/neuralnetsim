@@ -1,7 +1,7 @@
 import unittest
 import neuralnetsim
+import numpy as np
 from pkg_resources import resource_filename
-from pkg_resources import resource_isdir
 from pathlib import Path
 
 
@@ -24,5 +24,14 @@ class TestNetworkPlots(unittest.TestCase):
             "xy"
         )
         neuralnetsim.plot_slice(graph, color_key="level2", prefix="test")
+        # plot has to be visually inspected
+        self.assertTrue(True)
+
+    def test_plot_ccdf_distributions(self):
+        rng = np.random.RandomState(80234)
+        original = rng.lognormal(size=200)
+        others = [rng.lognormal(size=200) for i in range(10)]
+        neuralnetsim.plot_ccdf_distributions(original, others, "testx", "testy",
+                                             "log", "linear", prefix="test")
         # plot has to be visually inspected
         self.assertTrue(True)
