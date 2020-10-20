@@ -13,6 +13,7 @@ from pathlib import Path
 from statsmodels.distributions.empirical_distribution import ECDF
 from typing import List
 from neuralnetsim import calc_strength_distribution
+from neuralnetsim import calc_nodal_strength_difference_distribution
 
 
 def plot_slice(graph: nx.DiGraph,
@@ -117,3 +118,22 @@ def plot_graph_strength_distributions(original_graph: nx.DiGraph,
                             "Generated",
                             save_dir,
                             prefix + "_" + direction + "_strength")
+
+
+def plot_graph_nodal_strength_differences(original_graph: nx.DiGraph,
+                                          comparison_graphs: List[nx.DiGraph],
+                                          save_dir: Path = Path.cwd(),
+                                          prefix: str = ""):
+    original_dist = calc_nodal_strength_difference_distribution(original_graph)
+    comparison_dists = [calc_nodal_strength_difference_distribution(alt_graph)
+                        for alt_graph in comparison_graphs]
+    plot_ccdf_distributions(original_dist,
+                            comparison_dists,
+                            "weight",
+                            "CCDF",
+                            "linear",
+                            "linear",
+                            "Original",
+                            "Generated",
+                            save_dir,
+                            prefix + "_" + "_sdiff")
