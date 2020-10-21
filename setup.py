@@ -20,7 +20,8 @@ setup(name='neuralnetsim',
           'networkx>=2.5',
           'matplotlib>=3.3.2',
           'statsmodels>=0.12.0',
-          'seaborn>=0.11.0'
+          'seaborn>=0.11.0',
+          'nest-simulator>=2.20.0'
       ],
       include_package_data=False,
       zip_safe=False)
