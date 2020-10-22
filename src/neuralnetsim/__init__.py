@@ -7,3 +7,4 @@ from neuralnetsim.network_plots import *
 from neuralnetsim.cooling import *
 from neuralnetsim.energy import *
 from neuralnetsim.annealing import *
+from neuralnetsim.optimizer_net import *
