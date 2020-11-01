@@ -24,7 +24,8 @@ class SubNetwork:
                  synaptic_parameters: Dict,
                  noise_parameters: Dict,
                  neuron_model: str,
-                 weight_scale: float):
+                 weight_scale: float,
+                 inputs: List[np.ndarray] = None):
         """
         Initializes the subnetwork with the given parameters. It creates a
         network of a single model neuron with parrot neurons for all its
@@ -43,6 +44,9 @@ class SubNetwork:
         nest noise_generator.
         :param neuron_model: Specifies the nest neuron model.
         :param weight_scale: A scalar factor for adjusting the weights.
+        :param inputs: Optionally set the inputs into the neural network. If set
+        should be a list of spike times for each presynaptic input into the
+        target neuron.
         """
         self._graph_node_id = node_id
         self._presynaptic_nodes = list(graph.predecessors(self._graph_node_id))
@@ -62,7 +66,7 @@ class SubNetwork:
         self._detector = nest.Create("spike_detector")
         self._spike_generators = nest.Create(
             "spike_generator", len(self._presynaptic_nodes),
-            {'allow_offgrid_spikes': True})
+            {'allow_offgrid_times': True})
 
         # make connections
         self._presynaptic_connections = nest.Connect(
@@ -75,8 +79,11 @@ class SubNetwork:
         self._signal_connections = nest.Connect(
             self._spike_generators,
             self._parrots,
-            "all_to_all",
+            "one_to_one",
             {"model": "static_synapse", "weight": 1.0, "delay": 0.1})
+
+        if inputs is not None:
+            self.set_inputs(inputs)
 
     def _append_weights(self, synaptic_parameters: Dict, weight_scale: float):
         """
@@ -98,7 +105,11 @@ class SubNetwork:
         :param input_list: A list of numpy arrays of spike times.
         :return: None
         """
-        nest.SetStatus(self._spike_generators, input_list)
+        if len(input_list) != len(self._presynaptic_nodes):
+            raise AssertionError("Number of inputs into subnetwork did not"
+                                 " match the number of presynaptic connections")
+        nest.SetStatus(self._spike_generators,
+                       [{'spike_times': inputs} for inputs in input_list])
 
     def update_network_parameters(self, neuron_parameters: Dict,
                                   synapse_parameters: Dict,
@@ -121,16 +132,30 @@ class SubNetwork:
                        self._append_weights(synapse_parameters, weight_scale))
         nest.SetStatus(self._noise, noise_parameters)
 
-    def get_spike_output(self):
-        pass
+    def get_spike_output(self) -> np.ndarray:
+        """
+        :return: A numpy array of spike times for the target neuron.
+        """
+        return nest.GetStatus(self._detector)[0]['events']['times']
 
     @property
-    def presynaptic_nodes(self):
+    def presynaptic_nodes(self) -> List[int]:
         return self._presynaptic_nodes
 
     @presynaptic_nodes.setter
     def presynaptic_nodes(self, v):
         raise NotImplementedError
+
+    def __str__(self):
+        s = "="*7 + "NEURON" + "="*7 + "\n"
+        s += str(nest.GetStatus(self._neuron)) + "\n"
+        s += "="*7 + "DETECTOR" + "="*7 + "\n"
+        s += str(nest.GetStatus(self._detector)) + "\n"
+        s += "="*7 + "NOISE" + "="*7 + "\n"
+        s += str(nest.GetStatus(self._noise)) + "\n"
+        s += "="*7 + "GENERATORS" + "="*7 + "\n"
+        s += "\n".join(map(str, (out for out in nest.GetStatus(self._spike_generators))))
+        return s
 
 
 class OptimizerNetwork:
