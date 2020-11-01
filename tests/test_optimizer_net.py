@@ -11,15 +11,15 @@ class TestSubNetwork(unittest.TestCase):
                               'rng_seeds': [684]})
         nest.set_verbosity(40)
         graph = nx.DiGraph()
-        graph.add_edge(2, 1, weight=10000.0)
-        graph.add_edge(3, 1, weight=10000.0)
-        graph.add_edge(4, 1, weight=10000.0)
+        graph.add_edge(2, 1, weight=1.0)
+        graph.add_edge(3, 1, weight=1.0)
+        graph.add_edge(4, 1, weight=1.0)
 
         neuron_pars = {}
-        syn_pars = {"model": "static_synapse", "weight": 1.0, "delay": 2.0}
+        syn_pars = {"model": "static_synapse", "delay": 2.0}
         noise_pars = {"mean": 2.0, "std": 1.0, "dt": 0.1, "frequency": 10.0}
         self.net = neuralnetsim.SubNetwork(graph, 1, neuron_pars, syn_pars,
-                                           noise_pars, "iaf_tum_2000", 0.8)
+                                           noise_pars, "iaf_tum_2000", 8000.0)
 
     def tearDown(self) -> None:
         nest.ResetKernel()
