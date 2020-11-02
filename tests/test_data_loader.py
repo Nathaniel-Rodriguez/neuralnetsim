@@ -12,6 +12,12 @@ class TestDataLoader(unittest.TestCase):
         self.assertEqual(mat.shape[0], 243)
         self.assertEqual(mat.shape[1], 243)
 
+    def test_load_spikes(self):
+        file_path = resource_filename("tests", "test_data/data.mat")
+        data = neuralnetsim.load_spike_times(file_path)
+        self.assertEqual(len(data), 243)
+        self.assertEqual(data[0].shape[0], 6528)
+
 
 if __name__ == '__main__':
     unittest.main()

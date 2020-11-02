@@ -1,9 +1,10 @@
-__all__ = ['load_as_matrix']
+__all__ = ['load_as_matrix', 'load_spike_times']
 
 
 import numpy as np
 from scipy.io import loadmat
 from pathlib import Path
+from typing import List
 
 
 def load_as_matrix(file_path: Path, key: str) -> np.ndarray:
@@ -24,3 +25,12 @@ def load_as_matrix(file_path: Path, key: str) -> np.ndarray:
               "The following keys are available:", list(mat.keys()))
         raise err
 
+
+def load_spike_times(file_path: Path) -> List[np.ndarray]:
+    """
+    Loads spike time data from a matlab file.
+    :param file_path: Path to a file containing spike time data.
+    :return: A list of 1-D numpy arrays with spike times.
+    """
+    raw_data = load_as_matrix(file_path, "data")
+    return [raw[0] for raw in raw_data[0]]
