@@ -38,3 +38,11 @@ class TestValueTranslator(unittest.TestCase):
         self.assertAlmostEqual(translator.to_optimizer(-15.0), 0.5, 3)
         self.assertAlmostEqual(translator.to_optimizer(-20.0), 0.0, 3)
         self.assertAlmostEqual(translator.to_optimizer(-10.0), 1.0, 3)
+
+    def test_get_translator(self):
+        t1 = neuralnetsim.ValueTranslator("t1", -1, 1)
+        t2 = neuralnetsim.ValueTranslator("t2", 0, 10)
+        t3 = neuralnetsim.ValueTranslator("tn", 10, 20)
+        tlist = [t1, t2, t3]
+        self.assertEqual(neuralnetsim.get_translator(tlist, "t1"), t1)
+        self.assertRaises(KeyError, neuralnetsim.get_translator, tlist, "t4")
