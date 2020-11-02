@@ -13,7 +13,7 @@ class DataManager:
     ensures that the model is trained only on data older than the validation
     and testing data. In turn, validation data is always older than test data.
     """
-    def __init__(self, data: Dict[np.ndarray],
+    def __init__(self, data: Dict[int, np.ndarray],
                  num_folds: int = 1,
                  test_ratio: float = 0.1):
         """
@@ -40,6 +40,9 @@ class DataManager:
                              for spike_times in self._data.values())
         self._max_time = max(max(t for t in spike_times)
                              for spike_times in self._data.values())
+        self._cap = np.arange(self._max_time, 0.0,
+                              -self._test_ratio
+                              * self._max_time)[:self._num_folds]
         self._test_bounds = np.arange(self._max_time, 0.0,
                                       -self._test_ratio
                                       * self._max_time)[1:self._num_folds + 1]
@@ -58,7 +61,7 @@ class DataManager:
     def data(self, v):
         raise NotImplementedError
 
-    def get_training_fold(self, fold) -> Dict[np.ndarray]:
+    def get_training_fold(self, fold) -> Dict[int, np.ndarray]:
         """
         Retrieves the training data for a given nested cross-validation fold.
         :param fold: The fold to draw the data from (0, num_folds-1).
@@ -71,7 +74,7 @@ class DataManager:
         return {neuron: times[times < self._validation_bounds[fold]]
                 for neuron, times in self._data.items()}
 
-    def get_validation_fold(self, fold) -> Dict[np.ndarray]:
+    def get_validation_fold(self, fold) -> Dict[int, np.ndarray]:
         """
         Retrieves the validation data for a given nested cross-validation fold.
         :param fold: The fold to draw the data from (0, num_folds-1).
@@ -87,7 +90,7 @@ class DataManager:
                         - self._validation_bounds[fold]
                 for neuron, times in self._data.items()}
 
-    def get_test_fold(self, fold) -> Dict[np.ndarray]:
+    def get_test_fold(self, fold) -> Dict[int, np.ndarray]:
         """
         Retrieves the test data for a given nested cross-validation fold.
         :param fold: The fold to draw the data from (0, num_folds-1).
@@ -98,6 +101,7 @@ class DataManager:
         if fold > (self._num_folds - 1):
             raise ValueError("Invalid fold {0}. Folds range"
                              " from 0 to num_folds-1".format(str(fold)))
-        return {neuron: times[times >= self._test_bounds[fold]]
+        return {neuron: times[np.logical_and(times >= self._test_bounds[fold],
+                                             times <= self._cap[fold])]
                         - self._test_bounds[fold]
                 for neuron, times in self._data.items()}
