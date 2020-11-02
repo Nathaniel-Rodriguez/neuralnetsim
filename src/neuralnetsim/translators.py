@@ -87,7 +87,6 @@ class ArrayTranslator:
         :param noise_keys: A set of keys associated with NEST noise models.
         :param global_keys: A set of global keys.
         """
-        self._graph = graph
         self._translators = translators
         self._neuron_keys = neuron_keys
         self._synapse_keys = synapse_keys
