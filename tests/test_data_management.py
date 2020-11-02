@@ -66,3 +66,5 @@ class TestDataManager(unittest.TestCase):
         self.assertEqual(len(test[2]), 2)
         self.assertAlmostEqual(test[2][0], 0.2)
         self.assertAlmostEqual(test[2][1], 1.0)
+
+        self.assertRaises(ValueError, neuralnetsim.DataManager, self.data, 10)
