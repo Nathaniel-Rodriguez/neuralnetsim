@@ -24,4 +24,5 @@ setup(name='neuralnetsim',
           'nest-simulator>=2.20.0'
       ],
       include_package_data=False,
+      python_requires='>=3.7',
       zip_safe=False)
