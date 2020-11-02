@@ -17,8 +17,7 @@ class CircuitParameters:
                  static_neuron_parameters: Dict[str, Any] = None,
                  static_synaptic_parameters: Dict[str, Any] = None,
                  static_noise_parameters: Dict[str, Any] = None,
-                 static_global_parameters: Dict[str, Any] = None,
-                 kernel_parameters: Dict[str, Any] = None):
+                 static_global_parameters: Dict[str, Any] = None):
         """
         :param graph: Network associated with the parameterization.
         :param neuron_model: A NEST neuron model.
@@ -31,8 +30,6 @@ class CircuitParameters:
         set across all noise generators and not be subject to optimization.
         :param static_global_parameters: Any global parameters that are not
         subject to optimization.
-        :param kernel_parameters: Parameters to give to the NEST kernel before
-        simulation.
         """
         self.network = graph
         self.neuron_model = neuron_model
@@ -40,11 +37,6 @@ class CircuitParameters:
         self.neuron_parameters = {
             neuron_id: {} if static_neuron_parameters is None else static_neuron_parameters
             for neuron_id in graph.nodes()}
-
-        if kernel_parameters is None:
-            self.kernel_parameters = {}
-        else:
-            self.kernel_parameters = kernel_parameters
 
         if static_synaptic_parameters is None:
             self.synaptic_parameters = {}

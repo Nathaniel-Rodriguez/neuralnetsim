@@ -1,5 +1,6 @@
 __all__ = ["SubNetwork",
-           "OptimizerNetwork"]
+           "OptimizerNetwork",
+           "TrialManager"]
 
 
 import networkx as nx
@@ -7,6 +8,8 @@ import numpy as np
 import nest
 from typing import Dict
 from typing import List
+from typing import Any
+from neuralnetsim import CircuitParameters
 
 
 class SubNetwork:
@@ -146,6 +149,14 @@ class SubNetwork:
     def presynaptic_nodes(self, v):
         raise NotImplementedError
 
+    @property
+    def neuron_id(self):
+        return self._graph_node_id
+
+    @neuron_id.setter
+    def neuron_id(self, v):
+        raise NotImplementedError
+
     def __str__(self):
         s = "="*7 + "NEURON" + "="*7 + "\n"
         s += str(nest.GetStatus(self._neuron)) + "\n"
@@ -159,5 +170,76 @@ class SubNetwork:
 
 
 class OptimizerNetwork:
-    def __init__(self):
-        pass
+    """
+    The OptimizerNetwork builds a series of subnetworks that can be executed
+    and ran with the NEST kernel. Each subnetwork represents a target neuron
+    with inputs provided by its pre-synaptic neurons. Only the target neuron
+    is simulated.
+    """
+    def __init__(self, circuit_parameters: CircuitParameters,
+                 spike_times: Dict[int, np.ndarray]):
+        """
+        :param circuit_parameters: A CircuitParameters object with parameters
+        defined for the model.
+        :param spike_times: Input spike times for the simulation.
+        """
+        self._circuit_parameters = circuit_parameters
+        self._subnets = []
+        for neuron in self._circuit_parameters.network.nodes():
+            subnet = SubNetwork(
+                    self._circuit_parameters.network,
+                    neuron,
+                    self._circuit_parameters.neuron_parameters[neuron],
+                    self._circuit_parameters.synaptic_parameters,
+                    self._circuit_parameters.noise_parameters,
+                    self._circuit_parameters.neuron_model,
+                    self._circuit_parameters.global_parameters['weight_scale']
+                )
+            subnet.set_inputs([spike_times[node]
+                               for node in subnet.presynaptic_nodes])
+            self._subnets.append(subnet)
+
+    def run(self, duration: float):
+        """
+        Prompts the NEST kernel to run the simulation.
+        :param duration: How long to run the simulation in ms.
+        """
+        nest.Simulate(duration)
+
+    def get_spike_trains(self) -> Dict[int, np.ndarray]:
+        """
+        :return: Spike train results from the simulation keyed by neuron id and
+        valued by a 1-D numpy array of spike times.
+        """
+        return {subnet.neuron_id: subnet.get_spike_output
+                for subnet in self._subnets}
+
+
+class TrialManager:
+    """
+    TrialManager manages the NEST kernel as a context manager. It builds
+    and returns an OptimizerNetwork for the kernel and then cleans up the
+    kernel after simulation is complete. Can be used to set the kernel seed
+    or any other kernel parameters for the simulation. OptimizerNetworks
+    can only meaningfully exist within some kernel context.
+    """
+    def __init__(self, kernel_parameters: Dict[str, Any] = None,
+                 *args, **kwargs):
+        """
+        :param kernel_parameters: Parameters forwarded to the NEST kernel.
+        :param args: Arguments forwarded to the OptimizerNetwork.
+        :param kwargs: Keyword arguments forwarded to the OptimizerNetwork.
+        """
+        self._kernel_parameters = kernel_parameters
+        self._circuit_args = args
+        self._circuit_kwargs = kwargs
+
+    def __enter__(self):
+        nest.ResetKernel()  # Kernel must be reset before new simulation
+        if self._kernel_parameters is not None:
+            nest.SetKernelStatus(**self._kernel_parameters)
+        self.net = OptimizerNetwork(*self._circuit_args, **self._circuit_kwargs)
+        return self.net
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        nest.ResetKernel()

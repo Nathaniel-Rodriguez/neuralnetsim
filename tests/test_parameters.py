@@ -19,7 +19,6 @@ class TestCircuitParameters(unittest.TestCase):
         self.assertDictEqual(pars.synaptic_parameters, {'s1': 2.0})
         self.assertDictEqual(pars.noise_parameters, {'o1': 0.1})
         self.assertDictEqual(pars.global_parameters, {'g1': 0.0})
-        self.assertDictEqual(pars.kernel_parameters, dict())
 
     def test_extend_parameters(self):
         pars = neuralnetsim.CircuitParameters(
