@@ -62,10 +62,10 @@ class TestArrayTranslator(unittest.TestCase):
         self.graph.add_edge(0, 2)
         self.graph.add_edge(2, 3)
         self.graph.add_edge(3, 0)
-        self.g = {"g1"}
-        self.n = {"n1", "n2"}
-        self.s = {"s1"}
-        self.o = {"o1"}
+        self.g = ["g1"]
+        self.n = ["n1", "n2"]
+        self.s = ["s1"]
+        self.o = ["o1"]
         self.translator = neuralnetsim.ArrayTranslator(
             self.graph, self.t_list, self.n, self.s, self.o, self.g)
 
