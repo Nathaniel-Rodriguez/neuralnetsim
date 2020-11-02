@@ -1,5 +1,6 @@
 import unittest
 import neuralnetsim
+import numpy as np
 from pkg_resources import resource_exists
 from pkg_resources import resource_filename
 
@@ -17,6 +18,7 @@ class TestDataLoader(unittest.TestCase):
         data = neuralnetsim.load_spike_times(file_path)
         self.assertEqual(len(data), 243)
         self.assertEqual(data[0].shape[0], 6528)
+        self.assertIsInstance(data[0][0], np.float64)
 
 
 if __name__ == '__main__':
