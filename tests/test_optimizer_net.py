@@ -41,3 +41,65 @@ class TestSubNetwork(unittest.TestCase):
         for i, spike_time in enumerate(outputs):
             self.assertAlmostEqual(self.net.get_spike_output()[i],
                                    spike_time, 2)
+
+
+class TestOptimizerNetwork(unittest.TestCase):
+    def setUp(self) -> None:
+        nest.SetKernelStatus({'grng_seed': 16,
+                              'rng_seeds': [24]})
+        nest.set_verbosity(40)
+        graph = nx.DiGraph()
+        graph.add_edge(0, 1, weight=1.0)
+        graph.add_edge(1, 4, weight=1.0)
+        graph.add_edge(4, 0, weight=1.0)
+        graph.add_edge(4, 1, weight=1.0)
+        self.params = neuralnetsim.CircuitParameters(
+            graph,
+            "iaf_tum_2000",
+            {"t_ref_tot": 10.0, "t_ref_abs": 10.0},
+            {"delay": 10.0},
+            {"mean": 0.0},
+            {"weight_scale": 8000.0}
+        )
+        self.inputs = {0: np.array([10.0, 100.0, 105.0]),
+                       1: np.array([]),
+                       4: np.array([200.0])}
+
+    def tearDown(self) -> None:
+        nest.ResetKernel()
+
+    def test_setup(self):
+        net = neuralnetsim.OptimizerNetwork(self.params, self.inputs)
+        self.assertEqual(net._subnets[0].neuron_id, 0)
+        self.assertEqual(net._subnets[1].neuron_id, 1)
+        self.assertEqual(net._subnets[2].neuron_id, 4)
+
+        self.assertListEqual(net._subnets[0].presynaptic_nodes, [4])
+        self.assertListEqual(net._subnets[1].presynaptic_nodes, [0, 4])
+        self.assertListEqual(net._subnets[2].presynaptic_nodes, [1])
+
+        self.assertEqual(nest.GetStatus(net._subnets[0]._neuron)[0]['model'],
+                         "iaf_tum_2000")
+        self.assertAlmostEqual(
+            nest.GetStatus(net._subnets[0]._neuron)[0]['t_ref_tot'],
+            10.0)
+        self.assertAlmostEqual(
+            nest.GetStatus(
+                nest.GetConnections(net._subnets[0]._parrots,
+                                    net._subnets[0]._neuron))[0]['weight'],
+            8000.0)
+
+    def test_run(self):
+        net = neuralnetsim.OptimizerNetwork(self.params, self.inputs)
+        net.run(500.0)
+        data = net.get_spike_trains()
+        self.assertEqual(list(data.keys()), [0, 1, 4])
+        self.assertEqual(len(data[0]), 1)
+        self.assertEqual(len(data[4]), 0)
+        self.assertEqual(len(data[1]), 3)
+
+        # spikes should occur around 10.0 ms after input due to delay of 10 ms
+        self.assertGreater(data[1][0], 20.0)
+        self.assertLess(data[1][0], 25.0)
+        self.assertGreater(data[1][1], 110.0)
+        self.assertLess(data[1][1], 115.0)

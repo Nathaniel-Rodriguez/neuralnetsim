@@ -72,14 +72,12 @@ class SubNetwork:
             {'allow_offgrid_times': True})
 
         # make connections
-        self._presynaptic_connections = nest.Connect(
+        nest.Connect(
             self._parrots, self._neuron, "all_to_all",
             self._append_weights(synaptic_parameters, weight_scale))
-        self._noise_connection = nest.Connect(self._noise,
-                                              self._neuron)
-        self._detector_connection = nest.Connect(self._neuron,
-                                                 self._detector)
-        self._signal_connections = nest.Connect(
+        nest.Connect(self._noise, self._neuron)
+        nest.Connect(self._neuron, self._detector)
+        nest.Connect(
             self._spike_generators,
             self._parrots,
             "one_to_one",
@@ -113,27 +111,6 @@ class SubNetwork:
                                  " match the number of presynaptic connections")
         nest.SetStatus(self._spike_generators,
                        [{'spike_times': inputs} for inputs in input_list])
-
-    def update_network_parameters(self, neuron_parameters: Dict,
-                                  synapse_parameters: Dict,
-                                  noise_parameters: Dict,
-                                  weight_scale: float):
-        """
-        Updates the target neuron, the presynaptic connections, and the noise
-        generator.
-        :param neuron_parameters: A dictionary with new settings for the
-        neuron model.
-        :param synapse_parameters: A dictionary with new settings for the
-        synapse model.
-        :param noise_parameters: A dictionary with new settings for the noise
-        model.
-        :param weight_scale: A scale factor for the weights.
-        :return: None
-        """
-        nest.SetStatus(self._neuron, neuron_parameters)
-        nest.SetStatus(self._presynaptic_connections,
-                       self._append_weights(synapse_parameters, weight_scale))
-        nest.SetStatus(self._noise, noise_parameters)
 
     def get_spike_output(self) -> np.ndarray:
         """
@@ -211,7 +188,7 @@ class OptimizerNetwork:
         :return: Spike train results from the simulation keyed by neuron id and
         valued by a 1-D numpy array of spike times.
         """
-        return {subnet.neuron_id: subnet.get_spike_output
+        return {subnet.neuron_id: subnet.get_spike_output()
                 for subnet in self._subnets}
 
 
