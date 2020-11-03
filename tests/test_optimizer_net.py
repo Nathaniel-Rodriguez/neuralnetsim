@@ -103,3 +103,43 @@ class TestOptimizerNetwork(unittest.TestCase):
         self.assertLess(data[1][0], 25.0)
         self.assertGreater(data[1][1], 110.0)
         self.assertLess(data[1][1], 115.0)
+
+
+class TestTrialManager(unittest.TestCase):
+    def setUp(self) -> None:
+        nest.set_verbosity(40)
+        graph = nx.DiGraph()
+        graph.add_edge(0, 1, weight=1.0)
+        graph.add_edge(1, 4, weight=1.0)
+        graph.add_edge(4, 0, weight=1.0)
+        graph.add_edge(4, 1, weight=1.0)
+        self.params = neuralnetsim.CircuitParameters(
+            graph,
+            "iaf_tum_2000",
+            {"t_ref_tot": 10.0, "t_ref_abs": 10.0},
+            {"delay": 10.0},
+            {"mean": 0.0},
+            {"weight_scale": 8000.0}
+        )
+        self.inputs = {0: np.array([10.0, 100.0, 105.0]),
+                       1: np.array([]),
+                       4: np.array([200.0])}
+
+    def test_context(self):
+        run_success = False
+        with neuralnetsim.TrialManager(
+                {'grng_seed': 16, 'rng_seeds': [24]},
+                self.params,
+                self.inputs) as net:
+            net.run(500.0)
+            data = net.get_spike_trains()
+            self.assertEqual(list(data.keys()), [0, 1, 4])
+            self.assertEqual(len(data[0]), 1)
+            self.assertEqual(len(data[4]), 0)
+            self.assertEqual(len(data[1]), 3)
+            self.assertGreater(data[1][0], 20.0)
+            self.assertLess(data[1][0], 25.0)
+            self.assertGreater(data[1][1], 110.0)
+            self.assertLess(data[1][1], 115.0)
+            run_success = True
+        self.assertTrue(run_success)

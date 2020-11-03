@@ -214,7 +214,7 @@ class TrialManager:
     def __enter__(self):
         nest.ResetKernel()  # Kernel must be reset before new simulation
         if self._kernel_parameters is not None:
-            nest.SetKernelStatus(**self._kernel_parameters)
+            nest.SetKernelStatus(self._kernel_parameters)
         self.net = OptimizerNetwork(*self._circuit_args, **self._circuit_kwargs)
         return self.net
 
