@@ -23,7 +23,8 @@ setup(name='neuralnetsim',
           'seaborn>=0.11.0',
           'nest-simulator>=2.20.0',
           'dask>=2.30.0',
-          'distributed>=2.30.0'
+          'distributed>=2.30.0',
+          'pandas>=1.1.3'
       ],
       include_package_data=False,
       python_requires='>=3.7',
