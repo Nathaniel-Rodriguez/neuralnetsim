@@ -3,14 +3,18 @@ __all__ = ["SCMAEvoStrat"]
 
 import math
 import numpy as np
+import copy
 from pathlib import Path
 from typing import Dict
 from typing import Callable
 from typing import List
+from typing import Tuple
+from typing import Any
 from time import sleep
 from distributed import Client
 from distributed import as_completed
 from neuralnetsim.sliceops import *
+from neuralnetsim import save
 
 
 class EvoStratState:
@@ -101,6 +105,22 @@ class EvoStratState:
 
         self._d_diag = self._c_mat**0.5
 
+    @property
+    def centroid(self):
+        return self._x
+
+    @property
+    def population(self):
+        return self._population
+
+    @property
+    def population_size(self):
+        return self._lambda
+
+    @property
+    def sigma(self):
+        return self._s
+
     def update_population(self):
         for i in range(self._lambda):
             self._population[i, :] = self._x[:]
@@ -176,105 +196,163 @@ class EvoStratState:
 
 
 class EvoStratWorker:
-    def __init__(self, *args, **kwargs):
-        self._state = EvoStratState()
+    """
+    EvoStratWorker maintains and advances the evolutionary strategy state on
+    Dask workers.
+    """
+    def __init__(self, cost_kwargs: Dict = None, *args, **kwargs):
+        """
+        :param cost_kwargs: Any heavy arguments for the cost function
+        that should only be initialized once. Will be stored here and will be
+        forwarded to the cost function on call.
+        :param args: Arguments for the EvoStratState.
+        :param kwargs: Arguments for the EvoStratState.
+        """
+        self._state = EvoStratState(*args, **kwargs)
+        self.cost_kwargs = cost_kwargs
 
-    def retrieve_pop(self, pop_id: int):
-        return self._state.centroid[pop_id]
+    def retrieve_pop(self, pop_id: int) -> np.ndarray:
+        return self._state.population[pop_id]
 
-    def update(self, fitnesses: List[float]):
-        self._state.update_centroid(fitnesses)
+    def update(self, costs: List[float]):
+        self._state.update_population()
+        self._state.update_centroid(costs)
 
 
-def initialize_worker(*args, **kwargs):
-    print("INITIALIZED", flush=True)
+def initialize_worker(*args, **kwargs) -> EvoStratWorker:
+    """
+    Initialized the EvoStratWorker on a Dask client.
+    """
     return EvoStratWorker(*args, **kwargs)
 
 
-def scatter_fitness(fitness_array, worker):
-    print("SCATTER", flush=True)
-    worker.update(fitness_array)
-    sleep(1)
+def scatter_cost(costs: List[float], worker: EvoStratWorker):
+    worker.update(costs)
     return None
 
 
-def dispatch_work(fitness_function: Callable[[np.ndarray], float],
+def dispatch_work(cost_function: Callable[[np.ndarray, Any], float],
                   worker: EvoStratWorker,
                   pop_id: int,
-                  worker_id: int,
-                  fitness_kwargs: Dict):
-    print("WORK DISPATCH", pop_id, worker_id, flush=True)
-    return fitness_function(worker.retrieve_pop(pop_id),
-                            **fitness_kwargs), pop_id, worker_id
+                  worker_id: int) -> Tuple[float, int, int]:
+    """
+    Dispatches a new population evaluation workload to workers.
+    :param cost_function: A function that evaluates the cost of a given agent.
+    :param worker: The evolutionary strategy's worker.
+    :param pop_id: ID for the member of the population to be evaluated.
+    :param worker_id: ID for the Dask worker.
+    :return: Cost evaluated for a given member of the population.
+    """
+    return cost_function(worker.retrieve_pop(pop_id),
+                         **worker.cost_kwargs), pop_id, worker_id
 
 
 class SCMAEvoStrat:
-    def __init__(self):
-        self._state = EvoStratState()
+    """
+    Implements a separable covariance-matrix adaptation evolutionary strategy.
+    """
+    def __init__(self, *args, **kwargs):
+        """
+        :param args: Arguments to forward to EvoStratState.
+        :param kwargs: Arguments to forward to EvoStratState.
+        """
+        self._state = EvoStratState(*args, **kwargs)
+        self.cost_history = []
+        self.centroid_history = []
+        self.sigma_history = []
+        self.sigma_path_history = []
+        self.cov_path_history = []
 
-    def to_file(self):
-        pass  # just save some info to the pyboj, not the whole class
+    def to_file(self, filename: Path):
+        """
+        Writes out the history of the ES to file.
+        :param filename: Save file path.
+        """
+        save(
+            {'cost_history': self.cost_history,
+             'centroid_history': self.centroid_history,
+             'sigma_history': self.sigma_history,
+             'sigma_path_history': self.sigma_path_history,
+             'cov_path_history': self.cov_path_history},
+            filename
+        )
 
-    def run(self, fitness_function: Callable[[np.ndarray], float],
-            client: Client, num_iterations, fitness_kwargs: Dict = None):
-        if fitness_kwargs is None:
-            fitness_kwargs = {}
+    def run(self, cost_function: Callable[[np.ndarray, Any], float],
+            client: Client, num_iterations, cost_kwargs: Dict = None,
+            enable_path_history: bool = False):
+        """
+        Initiates the ES run.
+        :param cost_function: A callable function that will evaluate the cost
+        of a given array of parameters.
+        :param client: A Dask client for distributing execution.
+        :param num_iterations: How many evolutionary steps to take.
+        :param cost_kwargs: Arguments to save on the worker which will be
+        forwarded to the cost function at execution. These can be large
+        data sets or objects, as they are only passed to the worker once.
+        :param enable_path_history: Whether to save paths to the history.
+        :return: None
+        """
+        if cost_kwargs is None:
+            cost_kwargs = {}
+
         # setup evo strat workers
         sleep(5)  # wait on workers to connect
-        print("DID SLEEP")
         num_workers = len(client.scheduler_info()['workers'])
         if num_workers == 0:
             raise ValueError("Error: there are no workers.")
         dask_workers = list(client.scheduler_info()['workers'].keys())
         if len(dask_workers) == 0:
             raise ValueError("Error: there are no workers.")
-        print("GOT WORKERS... initializing")
-        evo_workers = [client.submit(initialize_worker, {}, workers=[worker])
+        evo_workers = [client.submit(initialize_worker, cost_kwargs, workers=[worker])
                        for worker in dask_workers]
-        print("ALL INITIALIZED")
-        # draw from centroids
 
+        # begin evolutionary steps
         for i in range(num_iterations):
-            print("LOOP", i)
+            self._state.update_population()
+
             # submit jobs so all workers have work
             unworked_pops = list(range(self._state.population_size))
             jobs = []
             for index in range(num_workers):
-                print("SUBMIT JOB")
                 jobs.append(client.submit(
-                    dispatch_work, fitness_function,
+                    dispatch_work, cost_function,
                     evo_workers[index], unworked_pops.pop(), index,
-                    fitness_kwargs,
                     workers=[dask_workers[index]]))
 
             # submit work until whole population has been evaluated
-            worked_pops = []
+            costs = [np.nan for _ in range(self._state.population_size)]
             working_batch = as_completed(jobs)
             for completed_job in working_batch:
-                fitness, pop_id, worker_id = completed_job.result()
-                print("JOB COMPLETED", fitness, pop_id, worker_id)
-                worked_pops.append((fitness, pop_id))
+                cost, pop_id, worker_id = completed_job.result()
+                costs[pop_id] = cost
 
                 if len(unworked_pops) > 0:
-                    print("MAKE NEW WORK")
                     working_batch.add(
                         client.submit(dispatch_work,
-                                      fitness_function,
+                                      cost_function,
                                       evo_workers[worker_id],
                                       unworked_pops.pop(),
                                       worker_id,
-                                      fitness_kwargs,
+                                      cost_kwargs,
                                       workers=[dask_workers[worker_id]]))
 
             # update centroids
             centroid_update_jobs = []
             for worker_id in range(num_workers):
-                print("DO CENTROIDS")
                 centroid_update_jobs.append(client.submit(
-                    scatter_fitness,
-                    [],
+                    scatter_cost,
+                    costs,
                     evo_workers[worker_id],
                     workers=[dask_workers[worker_id]]))
 
             # wait until centroids are updated
+            self._state.update_centroid(costs)
             client.gather(centroid_update_jobs)
+
+            # update history
+            self.centroid_history.append(self._state.centroid.copy())
+            self.sigma_history.append(self._state.sigma)
+            self.cost_history.append(copy.copy(costs))
+            if enable_path_history:
+                self.sigma_path_history.append(np.mean(self._state._s_path))
+                self.cov_path_history.append(np.mean(self._state._c_mat_path))
