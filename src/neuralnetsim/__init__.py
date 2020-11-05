@@ -1,3 +1,4 @@
+from neuralnetsim.sliceops import *
 from neuralnetsim.data_loader import *
 from neuralnetsim.data_management import *
 from neuralnetsim.translators import *
@@ -11,3 +12,4 @@ from neuralnetsim.cooling import *
 from neuralnetsim.energy import *
 from neuralnetsim.annealing import *
 from neuralnetsim.optimizer_net import *
+from neuralnetsim.scmaes import *

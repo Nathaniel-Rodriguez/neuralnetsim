@@ -19,3 +19,6 @@
 
 # remove test pdf
 *.pdf
+
+# remove dask temp files from test
+/dask-worker-space
