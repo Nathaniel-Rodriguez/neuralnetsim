@@ -22,3 +22,4 @@
 
 # remove dask temp files from test
 /dask-worker-space
+/examples/dask-worker-space

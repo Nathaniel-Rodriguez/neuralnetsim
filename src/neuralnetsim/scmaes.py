@@ -46,10 +46,10 @@ class EvoStratState:
         :param mu: Number of parents [defaulted].
         :param s_dim: Scaling factor for sigma based on number of dimensions [defaulted].
         :param mu_eff: Variance effective selective mass [defaulted].
-        :param c_c: Covariance matrix time constant [defaulted].
-        :param c_s: Sigma time constant [defaulted].
-        :param c_1: First-rank covariance time constant [defaulted].
-        :param c_mu: Mu-rank covariance time constant [defaulted].
+        :param c_c: Covariance matrix learning rate [defaulted].
+        :param c_s: Sigma learning rate [defaulted].
+        :param c_1: First-rank covariance learning rate [defaulted].
+        :param c_mu: Mu-rank covariance learning rate [defaulted].
         :param d_s: Sigma damping constant [defaulted].
         :param rnd_table_size: Size of random number table [defaulted].
         :param max_table_step: Maximum random step-size for controlling level
@@ -81,13 +81,14 @@ class EvoStratState:
             if s_dim is None else s_dim
         self._c_mat = np.ones(self._ndim, dtype=dtype)
         self._c_mat_path = np.zeros(self._ndim, dtype=dtype)
-        self._ordered_parents = np.zeros((self._mu, self._ndim))
-        self._ordered_parents_buff = np.zeros((self._mu, self._ndim))
+        self._ordered_parents = np.zeros((self._mu, self._ndim), dtype=dtype)
+        self._ordered_parents_buff = np.zeros((self._mu, self._ndim), dtype=dtype)
+        self._ordered_parents_tbuff = np.zeros((self._ndim, self._mu), dtype=dtype)
         self._s_path = np.zeros(self._ndim, dtype=dtype)
         self._weights = math.log(self._mu + 0.5)\
                         - np.log(np.arange(1, self._mu + 1))
         self._weights /= sum(self._weights)
-        self._weights.astype(dtype, copy=False)
+        self._weights = self._weights.astype(dtype, copy=True)
         self._mu_eff = 1. / sum(self._weights ** 2) if mu_eff is None else mu_eff
         self._c_c = 4. / (self._ndim + 4) if c_c is None else c_c
         self._c_s = (self._mu_eff + 2) / (self._ndim + self._mu_eff + 3) \
@@ -95,8 +96,8 @@ class EvoStratState:
         self._c_1 = 2. / ((self._ndim + 1.3)**2 + self._mu_eff)\
                     * (self._ndim + 2) / 3 \
             if c_1 is None else c_1
-        self._c_mu = min([1 - self._c_1, 2.
-                          * (self._mu_eff - 2 + 1 / self._mu_eff)
+        self._c_mu = min([1 - self._c_1,
+                          2. * (self._mu_eff - 2 + 1 / self._mu_eff)
                           / ((self._ndim + 2)**2 + self._mu_eff)]) \
             if c_mu is None else c_mu
         self._d_s = 1 + 2 * max(0., math.sqrt((self._mu_eff - 1)
@@ -121,7 +122,7 @@ class EvoStratState:
     def sigma(self):
         return self._s
 
-    def update_population(self):
+    def update_population(self) -> int:
         for i in range(self._lambda):
             self._population[i, :] = self._x[:]
             param_slices = random_slices(self._rng, self._ndim, self._ndim, 1)
@@ -132,17 +133,16 @@ class EvoStratState:
                                param_slices, table_slices)
         np.multiply(self._mutations, self._d_diag, out=self._mutations)
         np.multiply(self._mutations, self._s, out=self._mutations)
-        np.sum(self._population, self._mutations, out=self._population)
+        np.add(self._population, self._mutations, out=self._population)
+        return self._step
 
-    def update_centroid(self, costs: List[float]):
+    def update_centroid(self, costs: List[float]) -> int:
         # sort costs and then add weighted parents to centroid
         sorted_parent_indices = np.argsort(costs)
         self._x_last[:] = self._x[:]
         for i, parent_index in enumerate(sorted_parent_indices[:self._mu]):
             self._ordered_parents[i, :] = self._population[parent_index, :]
-            self._x_buffer[:] = self._population[parent_index, :]
-            np.multiply(self._x_buffer, self._weights[i], out=self._x_buffer)
-            self._x += self._x_buffer
+        np.dot(self._weights, self._ordered_parents, out=self._x)
 
         # calculate centroid movement and hsig for path and matrix update sequence
         self._c_diff[:] = self._x[:]
@@ -180,10 +180,10 @@ class EvoStratState:
         np.multiply(self._ndim_buff, self._c_1, out=self._ndim_buff)
         np.subtract(self._ordered_parents, self._x_last, out=self._ordered_parents)
         self._ordered_parents_buff[:] = self._ordered_parents[:]
-        np.multiply(self._weights, self._ordered_parents.T, out=self._ordered_parents_buff.T)
-        np.multiply(self._ordered_parents_buff.T, self._ordered_parents.T, out=self._ordered_parents_buff.T)
-        np.sum(self._ordered_parents_buff.T, axis=-1, out=self._ndim_buff2)
-        np.multiply(self._ndim_buff2, self._c_mu, out=self._ndim_buff2)
+        np.multiply(self._weights, self._ordered_parents.T, out=self._ordered_parents_tbuff)
+        np.multiply(self._ordered_parents_tbuff, self._ordered_parents.T, out=self._ordered_parents_tbuff)
+        np.sum(self._ordered_parents_tbuff, axis=-1, out=self._ndim_buff2)
+        np.multiply(self._ndim_buff2 / self.sigma ** 2, self._c_mu, out=self._ndim_buff2)
         np.add(self._c_mat, self._ndim_buff, out=self._c_mat)
         np.add(self._c_mat, self._ndim_buff2, out=self._c_mat)
 
@@ -193,6 +193,7 @@ class EvoStratState:
 
         # update diagonal
         np.sqrt(self._c_mat, out=self._d_diag)
+        return self._step
 
 
 class EvoStratWorker:
@@ -214,9 +215,11 @@ class EvoStratWorker:
     def retrieve_pop(self, pop_id: int) -> np.ndarray:
         return self._state.population[pop_id]
 
-    def update(self, costs: List[float]):
-        self._state.update_population()
-        self._state.update_centroid(costs)
+    def update_population(self) -> int:
+        return self._state.update_population()
+
+    def update_centroid(self, costs: List[float]) -> int:
+        return self._state.update_centroid(costs)
 
 
 def initialize_worker(*args, **kwargs) -> EvoStratWorker:
@@ -226,9 +229,12 @@ def initialize_worker(*args, **kwargs) -> EvoStratWorker:
     return EvoStratWorker(*args, **kwargs)
 
 
+def update_pops(worker: EvoStratWorker):
+    return worker.update_population()
+
+
 def scatter_cost(costs: List[float], worker: EvoStratWorker):
-    worker.update(costs)
-    return None
+    return worker.update_centroid(costs)
 
 
 def dispatch_work(cost_function: Callable[[np.ndarray, Any], float],
@@ -251,12 +257,13 @@ class SCMAEvoStrat:
     """
     Implements a separable covariance-matrix adaptation evolutionary strategy.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """
-        :param args: Arguments to forward to EvoStratState.
         :param kwargs: Arguments to forward to EvoStratState.
         """
-        self._state = EvoStratState(*args, **kwargs)
+        self._kwargs = kwargs.copy()
+        self._state = EvoStratState(**kwargs)
+        self.generation_history = []
         self.cost_history = []
         self.centroid_history = []
         self.sigma_history = []
@@ -273,7 +280,8 @@ class SCMAEvoStrat:
              'centroid_history': self.centroid_history,
              'sigma_history': self.sigma_history,
              'sigma_path_history': self.sigma_path_history,
-             'cov_path_history': self.cov_path_history},
+             'cov_path_history': self.cov_path_history,
+             'generation_history': self.generation_history},
             filename
         )
 
@@ -303,12 +311,27 @@ class SCMAEvoStrat:
         dask_workers = list(client.scheduler_info()['workers'].keys())
         if len(dask_workers) == 0:
             raise ValueError("Error: there are no workers.")
-        evo_workers = [client.submit(initialize_worker, cost_kwargs, workers=[worker])
+        evo_workers = [client.submit(initialize_worker, cost_kwargs,
+                                     **self._kwargs, workers=[worker],
+                                     pure=False)
                        for worker in dask_workers]
 
         # begin evolutionary steps
         for i in range(num_iterations):
-            self._state.update_population()
+            # update populations
+            pop_update_jobs = []
+            for worker_id in range(num_workers):
+                pop_update_jobs.append(client.submit(
+                    update_pops,
+                    evo_workers[worker_id],
+                    workers=[dask_workers[worker_id]],
+                    pure=False))
+            master_step = self._state.update_population()
+            slave_steps = client.gather(pop_update_jobs)
+            if any([master_step != slave_step for slave_step in slave_steps]):
+                raise RuntimeWarning("Workers are out of sync on population"
+                                     " update. Slave steps:", slave_steps,
+                                     "Master step:", master_step)
 
             # submit jobs so all workers have work
             unworked_pops = list(range(self._state.population_size))
@@ -317,7 +340,8 @@ class SCMAEvoStrat:
                 jobs.append(client.submit(
                     dispatch_work, cost_function,
                     evo_workers[index], unworked_pops.pop(), index,
-                    workers=[dask_workers[index]]))
+                    workers=[dask_workers[index]],
+                    pure=False))
 
             # submit work until whole population has been evaluated
             costs = [np.nan for _ in range(self._state.population_size)]
@@ -325,7 +349,6 @@ class SCMAEvoStrat:
             for completed_job in working_batch:
                 cost, pop_id, worker_id = completed_job.result()
                 costs[pop_id] = cost
-
                 if len(unworked_pops) > 0:
                     working_batch.add(
                         client.submit(dispatch_work,
@@ -333,8 +356,12 @@ class SCMAEvoStrat:
                                       evo_workers[worker_id],
                                       unworked_pops.pop(),
                                       worker_id,
-                                      cost_kwargs,
-                                      workers=[dask_workers[worker_id]]))
+                                      workers=[dask_workers[worker_id]],
+                                      pure=False))
+            if len(unworked_pops) > 0:
+                raise RuntimeError("Failed to work all pops, remaining:", unworked_pops)
+            if np.nan in costs:
+                raise RuntimeError("Failed to assign cost for all pops:", costs)
 
             # update centroids
             centroid_update_jobs = []
@@ -343,13 +370,19 @@ class SCMAEvoStrat:
                     scatter_cost,
                     costs,
                     evo_workers[worker_id],
-                    workers=[dask_workers[worker_id]]))
+                    workers=[dask_workers[worker_id]],
+                    pure=False))
 
             # wait until centroids are updated
-            self._state.update_centroid(costs)
-            client.gather(centroid_update_jobs)
+            master_step = self._state.update_centroid(costs)
+            slave_steps = client.gather(centroid_update_jobs)
+            if any([master_step != slave_step for slave_step in slave_steps]):
+                raise RuntimeWarning("Workers are out of sync on centroid update."
+                                     " Slave steps:", slave_steps,
+                                     "Master step:", master_step)
 
             # update history
+            self.generation_history.append(i)
             self.centroid_history.append(self._state.centroid.copy())
             self.sigma_history.append(self._state.sigma)
             self.cost_history.append(copy.copy(costs))
