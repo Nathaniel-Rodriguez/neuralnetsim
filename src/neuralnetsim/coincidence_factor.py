@@ -55,6 +55,8 @@ def coincidence_factor(model_spike_times: List[np.ndarray],
     """
     Calculates the coincidence factor as described in "Predicting neuronal
     activity with simple models of the threshold type".
+    Will return inf if data spikes are empty, and nan if both model and data
+    spikes are empty.
     :param model_spike_times: A sequence of 1-D arrays with model spike times.
     :param data_spike_times: A 1-D array of data spike times.
     :param time_window: The time window of the experiment.
