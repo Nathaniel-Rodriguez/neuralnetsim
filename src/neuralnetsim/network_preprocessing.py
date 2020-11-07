@@ -1,7 +1,8 @@
 __all__ = ["get_network", "add_communities", "add_positions",
            "apply_weight_threshold",
            "build_graph_from_data",
-           "get_first_loss_graph"]
+           "get_first_loss_graph",
+           "convert_scale"]
 
 
 import infomap
@@ -26,11 +27,14 @@ def get_network(weight_matrix: np.ndarray,
     return nx.from_numpy_matrix(adj_matrix, create_using=nx.DiGraph)
 
 
-def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0, **kwargs) -> nx.DiGraph:
+def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0,
+                           largest_component=True,
+                           **kwargs) -> nx.DiGraph:
     """
     Applies a threshold to the graph based on the "weight" edge attribute.
     :param graph: A networkx DiGraph.
     :param threshold: A weight threshold (default: 0.0)
+    :param largest_component: Return only the largest connected component.
     :return: The largest component of the resulting graph.
     """
     # threshold the edges
@@ -38,8 +42,27 @@ def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0, **kwargs) -> nx.DiG
         edge for edge, weight in nx.get_edge_attributes(graph, "weight").items()
         if weight < threshold)
     # make graph from largest connected component
-    return max([graph.subgraph(c) for c in nx.weakly_connected_components(graph)],
-               key=len).copy()
+    if largest_component:
+        return max([graph.subgraph(c) for c in nx.weakly_connected_components(graph)],
+                   key=len).copy()
+    else:
+        return graph
+
+
+def convert_scale(graph: nx.DiGraph) -> nx.DiGraph:
+    """
+    Generate a new graph with weights in log scale.
+    :param graph: Graph to convert edge weights from.
+    :return: New graph with all edge weights converted to log scale.
+    """
+    log_graph = graph.copy()
+    nx.set_edge_attributes(log_graph,
+                           {edge: abs(1. / np.log(weight))
+                            for edge, weight in nx.get_edge_attributes(
+                               graph, "weight").items()},
+                           "weight"
+                           )
+    return log_graph
 
 
 def get_first_loss_graph(graph: nx.DiGraph) -> nx.DiGraph:
@@ -70,7 +93,8 @@ def get_first_loss_graph(graph: nx.DiGraph) -> nx.DiGraph:
 
 def add_communities(graph: nx.DiGraph, seed=None,
                     infomap_commands=None,
-                    at_first_loss=False,
+                    at_first_loss: bool = False,
+                    rescale: bool = False,
                     **kwargs) -> nx.DiGraph:
     """
     Uses Infomap to detect communities in a given graph and then assigns
@@ -84,6 +108,8 @@ def add_communities(graph: nx.DiGraph, seed=None,
         ["-N 10", "--two-level", "--directed", "--silent"]).
     :param at_first_loss: Add communities based on dynamic thresholding that
     removes all weights up to the first one that breaks the connected component.
+    :param rescale: Converts weights to rescaled version before running
+    community detection.
     :return: Updates graph in-place with community assignments, returns the
              provided graph.
     """
@@ -91,6 +117,9 @@ def add_communities(graph: nx.DiGraph, seed=None,
         com_graph = get_first_loss_graph(graph)
     else:
         com_graph = graph
+
+    if rescale:
+        com_graph = convert_scale(com_graph)
 
     if infomap_commands is None:
         infomap_commands = ["-N 10", "--two-level", "--directed", "--silent"]

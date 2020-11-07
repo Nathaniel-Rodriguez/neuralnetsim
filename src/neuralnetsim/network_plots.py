@@ -1,6 +1,7 @@
-__all__ = ['plot_slice',
+__all__ = ["plot_slice",
            "plot_ccdf_distributions",
-           "plot_graph_strength_distributions"]
+           "plot_graph_strength_distributions",
+           "plot_weight_distribution"]
 
 
 import networkx as nx
@@ -14,6 +15,25 @@ from statsmodels.distributions.empirical_distribution import ECDF
 from typing import List
 from neuralnetsim import calc_strength_distribution
 from neuralnetsim import calc_nodal_strength_difference_distribution
+
+
+def plot_weight_distribution(graph: nx.DiGraph,
+                             save_dir: Path = Path.cwd(),
+                             prefix: str = ""):
+    """
+    Creates a pdf plot of the neural slice weight distribution in log scale.
+    :param graph: The networkx graph with a "weight" edge attribute.
+    :param save_dir: Directory to save the plot to.
+    :param prefix: A prefix to prepend to the plot name.
+    :return: None
+    """
+    weights = [weight for weight in nx.get_edge_attributes(graph, "weight").values()]
+    seaborn.histplot(data=weights,
+                     stat="density",
+                     log_scale=True)
+    plt.savefig(save_dir.joinpath(prefix + "_weight_hist.pdf"))
+    plt.close()
+    plt.clf()
 
 
 def plot_slice(graph: nx.DiGraph,

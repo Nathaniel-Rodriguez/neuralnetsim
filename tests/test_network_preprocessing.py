@@ -1,6 +1,7 @@
 import unittest
 import neuralnetsim
 import networkx as nx
+import numpy as np
 from pkg_resources import resource_filename
 from pkg_resources import resource_isdir
 from pathlib import Path
@@ -86,3 +87,13 @@ class TestNetworkPreprocessing(unittest.TestCase):
         edges = [(0, 2), (1, 3), (2, 3), (3, 4)]
         for edge in test_graph.edges():
             self.assertTrue(edge in edges)
+
+    def test_convert_scale(self):
+        graph = nx.DiGraph()
+        graph.add_edge(0, 2, weight=0.9)
+        graph.add_edge(1, 3, weight=0.2)
+        test_graph = neuralnetsim.convert_scale(graph)
+        correct = {(0, 2): np.fabs(1/np.log(0.9)),
+                   (1, 3): np.fabs(1/np.log(0.2))}
+        for edge, weight in nx.get_edge_attributes(test_graph, "weight").items():
+            self.assertAlmostEqual(weight, correct[edge])
