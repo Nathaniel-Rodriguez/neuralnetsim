@@ -1,6 +1,7 @@
 __all__ = ["get_network", "add_communities", "add_positions",
            "apply_weight_threshold",
-           "build_graph_from_data"]
+           "build_graph_from_data",
+           "get_first_loss_graph"]
 
 
 import infomap
@@ -41,8 +42,36 @@ def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0, **kwargs) -> nx.DiG
                key=len).copy()
 
 
+def get_first_loss_graph(graph: nx.DiGraph) -> nx.DiGraph:
+    """
+    Generate a new graph that removes links in order from low weight to high
+    while retaining the size of the largest connected component. Requires a
+    graph with a "weight" edge attribute.
+    :param graph: A graph to apply the dynamic thresholding too.
+    :return: A new graph with all low-weight edges removed while retaining
+    node connectivity.
+    """
+    test_graph = graph.copy()
+    sorted_edges = sorted([(edge, weight)
+                           for edge, weight in nx.get_edge_attributes(graph, "weight").items()],
+                          key=lambda v: v[1])
+    to_remove = []
+    num_nodes = nx.number_of_nodes(graph)
+    for edge in sorted_edges:
+        test_graph.remove_edge(*edge[0])
+        if num_nodes == len(max(nx.weakly_connected_components(test_graph), key=len)):
+            to_remove.append(edge[0])
+        else:
+            break
+
+    graph.remove_edges_from(to_remove)
+    return graph
+
+
 def add_communities(graph: nx.DiGraph, seed=None,
-                    infomap_commands=None, **kwargs) -> nx.DiGraph:
+                    infomap_commands=None,
+                    at_first_loss=False,
+                    **kwargs) -> nx.DiGraph:
     """
     Uses Infomap to detect communities in a given graph and then assigns
     those communities as an attribute to the nodes of graph called "level1"
@@ -53,16 +82,25 @@ def add_communities(graph: nx.DiGraph, seed=None,
     :param seed: A seed for Infomap (default: None).
     :param infomap_commands: Optional command arguments for Infomap (default:
         ["-N 10", "--two-level", "--directed", "--silent"]).
+    :param at_first_loss: Add communities based on dynamic thresholding that
+    removes all weights up to the first one that breaks the connected component.
     :return: Updates graph in-place with community assignments, returns the
              provided graph.
     """
+    if at_first_loss:
+        com_graph = get_first_loss_graph(graph)
+    else:
+        com_graph = graph
+
     if infomap_commands is None:
         infomap_commands = ["-N 10", "--two-level", "--directed", "--silent"]
     if seed is not None:
         infomap_commands.append("--seed " + str(seed))
     imap = infomap.Infomap(" ".join(infomap_commands))
-    imap.add_links(tuple((i, j, w) for i, j, w in graph.edges.data('weight')))
+    imap.add_links(tuple((i, j, w) for i, j, w in com_graph.edges.data('weight')))
     imap.run()
+
+    # add communities to original graph
     nx.set_node_attributes(graph, imap.get_modules(depth_level=1), "level1")
     nx.set_node_attributes(graph, imap.get_modules(depth_level=2), "level2")
 

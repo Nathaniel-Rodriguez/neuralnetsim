@@ -6,7 +6,7 @@ from pkg_resources import resource_isdir
 from pathlib import Path
 
 
-class TestCommunityDetection(unittest.TestCase):
+class TestNetworkPreprocessing(unittest.TestCase):
     def setUp(self):
         self.link_path = resource_filename("tests", "test_data/pdf.mat")
         self.weight_path = resource_filename("tests", "test_data/weights.mat")
@@ -70,3 +70,19 @@ class TestCommunityDetection(unittest.TestCase):
                             {'level1', 'level2', 'pos'})
         for node in graph.nodes:
             self.assertEqual(len(graph.nodes[node]['pos']), 2)
+
+    def test_get_first_loss_graph(self):
+        graph = nx.DiGraph()
+        graph.add_edge(0, 1, weight=0.1)  # should be removed
+        graph.add_edge(0, 2, weight=0.25)
+        graph.add_edge(1, 2, weight=0.2)  # should be removed
+        graph.add_edge(1, 3, weight=0.27)
+        graph.add_edge(2, 3, weight=0.3)
+        graph.add_edge(3, 4, weight=0.4)
+
+        test_graph = neuralnetsim.get_first_loss_graph(graph)
+        self.assertEqual(len(test_graph), 5)
+        self.assertEqual(nx.number_of_edges(test_graph), 4)
+        edges = [(0, 2), (1, 3), (2, 3), (3, 4)]
+        for edge in test_graph.edges():
+            self.assertTrue(edge in edges)
