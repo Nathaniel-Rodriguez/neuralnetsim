@@ -91,7 +91,8 @@ def get_first_loss_graph(graph: nx.DiGraph) -> nx.DiGraph:
     return graph
 
 
-def add_communities(graph: nx.DiGraph, seed=None,
+def add_communities(graph: nx.DiGraph,
+                    seed=None,
                     infomap_commands=None,
                     at_first_loss: bool = False,
                     rescale: bool = False,

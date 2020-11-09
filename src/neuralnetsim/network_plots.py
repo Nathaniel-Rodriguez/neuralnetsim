@@ -1,6 +1,7 @@
 __all__ = ["plot_slice",
            "plot_ccdf_distributions",
            "plot_graph_strength_distributions",
+           "plot_graph_nodal_strength_differences",
            "plot_weight_distribution"]
 
 
@@ -118,6 +119,8 @@ def plot_ccdf_distributions(original_dist: np.ndarray,
     plt.tight_layout()
     plt.savefig(save_dir.joinpath(
         prefix + "_ccdf.pdf"))
+    plt.close()
+    plt.clf()
 
 
 def plot_graph_strength_distributions(original_graph: nx.DiGraph,
@@ -156,4 +159,4 @@ def plot_graph_nodal_strength_differences(original_graph: nx.DiGraph,
                             "Original",
                             "Generated",
                             save_dir,
-                            prefix + "_" + "_sdiff")
+                            prefix + "_sdiff")

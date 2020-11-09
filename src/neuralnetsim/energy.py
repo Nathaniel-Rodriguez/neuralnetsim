@@ -87,7 +87,6 @@ class NeuronalStrengthDifferenceEnergyFunction:
     the difference between neuron in-strengths and out-strengths is taken.
     If near zero, then it matches with expectations.
     """
-
     # noinspection PyTypeChecker
     def __call__(self, matrix: np.ndarray) -> float:
         """
@@ -173,11 +172,12 @@ class NeuronalStrengthDifferenceEnergyFunctionDebug(HistoryMixin, NeuronalStreng
 
 
 class NeuralEnergyFunctionDebug(HistoryMixin, NeuralEnergyFunction):
-    def __int__(self, graph: nx.DiGraph,
-                target_modularity: float,
-                community_key: str,
-                *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, graph: nx.DiGraph,
+                 target_modularity: float,
+                 community_key: str,
+                 *args,
+                 **kwargs):
+        super().__init__(graph, target_modularity, community_key, *args, **kwargs)
         self.modularity_energy_function = ModularityEnergyFunctionDebug(
             graph, target_modularity, community_key)
         self.strength_dist_energy_function = StrengthDistributionEnergyFunctionDebug(graph)

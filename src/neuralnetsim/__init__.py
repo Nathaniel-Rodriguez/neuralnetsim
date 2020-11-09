@@ -14,3 +14,4 @@ from neuralnetsim.annealing import *
 from neuralnetsim.optimizer_net import *
 from neuralnetsim.scmaes import *
 from neuralnetsim.coincidence_factor import *
+from neuralnetsim.network_fitting import *

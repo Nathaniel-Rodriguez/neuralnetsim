@@ -179,7 +179,8 @@ class NetworkAnnealer:
                                 for k in self._graph.nodes[n].keys()])
         for key in node_attrib_keys:
             nx.set_node_attributes(result_graph,
-                                   nx.get_node_attributes(self._graph, key))
+                                   nx.get_node_attributes(self._graph, key),
+                                   key)
         return result_graph
 
     def fit_predict(self, graph: nx.DiGraph) -> nx.DiGraph:
