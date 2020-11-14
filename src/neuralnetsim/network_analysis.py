@@ -30,9 +30,11 @@ def calc_strength_distribution(graph: nx.DiGraph, direction: str) -> np.ndarray:
     This is the default ordering for networkx graphs.
     """
     if direction == "in":
-        return np.sum(nx.to_numpy_array(graph), axis=0)
+        distribution = np.sum(nx.to_numpy_array(graph), axis=0)
+        return distribution[distribution != 0.0].copy()
     elif direction == "out":
-        return np.sum(nx.to_numpy_array(graph), axis=1)
+        distribution = np.sum(nx.to_numpy_array(graph), axis=1)
+        return distribution[distribution != 0.0].copy()
 
 
 def calc_nodal_strength_difference_distribution(graph: nx.DiGraph) -> np.ndarray:

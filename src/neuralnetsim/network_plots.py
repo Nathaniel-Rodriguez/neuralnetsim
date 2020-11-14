@@ -2,7 +2,9 @@ __all__ = ["plot_slice",
            "plot_ccdf_distributions",
            "plot_graph_strength_distributions",
            "plot_graph_nodal_strength_differences",
-           "plot_weight_distribution"]
+           "plot_weight_distribution",
+           "plot_graph_collapsed_strength_distributions",
+           "plot_graph_collapsed_nodal_strength_differences"]
 
 
 import networkx as nx
@@ -14,6 +16,7 @@ from matplotlib import cm
 from pathlib import Path
 from statsmodels.distributions.empirical_distribution import ECDF
 from typing import List
+from typing import Callable
 from neuralnetsim import calc_strength_distribution
 from neuralnetsim import calc_nodal_strength_difference_distribution
 
@@ -133,7 +136,7 @@ def plot_graph_strength_distributions(original_graph: nx.DiGraph,
                         for alt_graph in comparison_graphs]
     plot_ccdf_distributions(original_dist,
                             comparison_dists,
-                            "weight",
+                            direction + "-strength",
                             "CCDF",
                             "log",
                             "linear",
@@ -152,7 +155,7 @@ def plot_graph_nodal_strength_differences(original_graph: nx.DiGraph,
                         for alt_graph in comparison_graphs]
     plot_ccdf_distributions(original_dist,
                             comparison_dists,
-                            "weight",
+                            "strength",
                             "CCDF",
                             "linear",
                             "linear",
@@ -160,3 +163,92 @@ def plot_graph_nodal_strength_differences(original_graph: nx.DiGraph,
                             "Generated",
                             save_dir,
                             prefix + "_sdiff")
+
+
+def plot_collapsed_ccdf_distributions(
+        collapse_function: Callable[[np.ndarray], np.ndarray],
+        original_dists: List[np.ndarray],
+        comparison_dists: List[np.ndarray],
+        xlabel: str = "",
+        ylabel: str = "",
+        xscale: str = "linear",
+        yscale: str = "linear",
+        original_legend_label: str = "originals",
+        comparison_legend_label: str = "comparison",
+        save_dir: Path = Path.cwd(),
+        prefix: str = ""):
+    for dist in comparison_dists:
+        ecdf = ECDF(collapse_function(dist), side='left')
+        x = np.sort(collapse_function(dist))
+        y = 1.0 - ecdf(x)
+        plt.plot(x, y, c="grey", alpha=0.05, lw=0.5)
+
+    for i, original_dist in enumerate(original_dists):
+        ecdf = ECDF(collapse_function(original_dist), side='left')
+        x = np.sort(collapse_function(original_dist))
+        y = 1.0 - ecdf(x)
+        plt.plot(x, y,
+                 c=seaborn.color_palette("tab10")[i % len(seaborn.color_palette("tab10"))],
+                 lw=1.0, alpha=0.8)
+    alt_patch = mpatches.Patch(color='grey', label=comparison_legend_label)
+    orig_patch = mpatches.Patch(color=seaborn.color_palette("tab10")[0],
+                                label=original_legend_label)
+    plt.legend(handles=[orig_patch, alt_patch])
+    plt.xscale(xscale)
+    plt.yscale(yscale)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.tight_layout()
+    plt.savefig(save_dir.joinpath(
+        prefix + "_collapsed_ccdf.png"), dpi=600)
+    plt.close()
+    plt.clf()
+
+
+def plot_graph_collapsed_strength_distributions(
+        collapse_function: Callable[[np.ndarray], np.ndarray],
+        original_graphs: List[nx.DiGraph],
+        comparison_graphs: List[nx.DiGraph],
+        direction="in",
+        save_dir: Path = Path.cwd(),
+        prefix: str = ""):
+    original_dists = [calc_strength_distribution(original_graph, direction)
+                      for original_graph in original_graphs]
+    comparison_dists = [calc_strength_distribution(alt_graph, direction)
+                        for alt_graph in comparison_graphs]
+    plot_collapsed_ccdf_distributions(
+        collapse_function,
+        original_dists,
+        comparison_dists,
+        "log(" + direction + "-strength)",
+        "CCDF",
+        "linear",
+        "linear",
+        "Originals",
+        "Generated",
+        save_dir,
+        prefix + "_" + direction + "_strength")
+
+
+def plot_graph_collapsed_nodal_strength_differences(
+        collapse_function: Callable[[np.ndarray], np.ndarray],
+        original_graphs: List[nx.DiGraph],
+        comparison_graphs: List[nx.DiGraph],
+        save_dir: Path = Path.cwd(),
+        prefix: str = ""):
+    original_dists = [calc_nodal_strength_difference_distribution(original_graph)
+                      for original_graph in original_graphs]
+    comparison_dists = [calc_nodal_strength_difference_distribution(alt_graph)
+                        for alt_graph in comparison_graphs]
+    plot_collapsed_ccdf_distributions(
+        collapse_function,
+        original_dists,
+        comparison_dists,
+        "strength difference",
+        "CCDF",
+        "linear",
+        "linear",
+        "Originals",
+        "Generated",
+        save_dir,
+        prefix + "_sdiff")

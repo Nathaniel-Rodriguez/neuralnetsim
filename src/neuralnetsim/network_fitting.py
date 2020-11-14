@@ -87,6 +87,7 @@ def fit_network(graph: nx.DiGraph,
                        'energy_kwargs': energy_kwargs,
                        'cooling_kwargs': cooling_kwargs,
                        'annealing_kwargs': annealing_kwargs,
-                       'seed': seed}
+                       'seed': seed,
+                       'prefix': prefix}
     }
     save(results, save_dir.joinpath(prefix + "_fit_network_results.pyobj"))
