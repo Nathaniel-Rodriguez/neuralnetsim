@@ -51,7 +51,7 @@ class DataManager:
                                             * self._max_time)[2:self._num_folds + 2]
 
     @property
-    def data(self):
+    def data(self) -> Dict[int, np.ndarray]:
         """
         :return: The original data.
         """
@@ -61,7 +61,7 @@ class DataManager:
     def data(self, v):
         raise NotImplementedError
 
-    def get_training_fold(self, fold) -> Dict[int, np.ndarray]:
+    def get_training_fold(self, fold: int) -> Dict[int, np.ndarray]:
         """
         Retrieves the training data for a given nested cross-validation fold.
         :param fold: The fold to draw the data from (0, num_folds-1).
@@ -74,7 +74,7 @@ class DataManager:
         return {neuron: times[times < self._validation_bounds[fold]]
                 for neuron, times in self._data.items()}
 
-    def get_validation_fold(self, fold) -> Dict[int, np.ndarray]:
+    def get_validation_fold(self, fold: int) -> Dict[int, np.ndarray]:
         """
         Retrieves the validation data for a given nested cross-validation fold.
         :param fold: The fold to draw the data from (0, num_folds-1).
@@ -90,7 +90,7 @@ class DataManager:
                         - self._validation_bounds[fold]
                 for neuron, times in self._data.items()}
 
-    def get_test_fold(self, fold) -> Dict[int, np.ndarray]:
+    def get_test_fold(self, fold: int) -> Dict[int, np.ndarray]:
         """
         Retrieves the test data for a given nested cross-validation fold.
         :param fold: The fold to draw the data from (0, num_folds-1).
@@ -105,3 +105,22 @@ class DataManager:
                                              times <= self._cap[fold])]
                         - self._test_bounds[fold]
                 for neuron, times in self._data.items()}
+
+    def get_duration(self, split_type: str, fold: int, buffer: float = 0.0) -> float:
+        """
+        Returns a suggested run duration for a given split of the data. This
+        will be the maximum spike time for that split + a buffer.
+        :param split_type: Choose: "training", "validation", or "test"
+        :param fold: Which fold to get the duration for.
+        :param buffer: A buffer past the last spike (in ms) [default: 0.0].
+        :return: A suggested run duration for a simulation.
+        """
+        if split_type == "training":
+            return self._validation_bounds[fold] + buffer
+        elif split_type == "validation":
+            return self._test_bounds[fold] + buffer - self._validation_bounds[fold]
+        elif split_type == "test":
+            return self._cap[fold] + buffer - self._test_bounds[fold]
+        else:
+            raise ValueError("Invalid split_type of {0}. Must choose 'training',"
+                             " 'validation', or 'test'.".format(split_type))

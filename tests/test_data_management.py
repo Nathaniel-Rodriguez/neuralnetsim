@@ -68,3 +68,13 @@ class TestDataManager(unittest.TestCase):
         self.assertAlmostEqual(test[2][1], 1.0)
 
         self.assertRaises(ValueError, neuralnetsim.DataManager, self.data, 10)
+
+    def test_duration(self):
+        dm = neuralnetsim.DataManager(self.data, 2, test_ratio=0.1)
+        self.assertAlmostEqual(dm.get_duration("training", 0, 2.0), 10.0)
+        self.assertAlmostEqual(dm.get_duration("validation", 0, 2.0), 3.0)
+        self.assertAlmostEqual(dm.get_duration("test", 0, 2.0), 3.0)
+        self.assertAlmostEqual(dm.get_duration("training", 1, 2.0), 9.0)
+        self.assertAlmostEqual(dm.get_duration("validation", 1, 2.0), 3.0)
+        self.assertAlmostEqual(dm.get_duration("test", 1, 2.0), 3.0)
+        self.assertRaises(ValueError, dm.get_duration, "incorrect", 1, 0.0)
