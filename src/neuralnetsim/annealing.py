@@ -217,9 +217,11 @@ class NetworkAnnealerDebug(NetworkAnnealer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._history = []
+        self.temperatures = []
 
     def _scramble(self, *args, **kwargs):
         self._history.append(self._energy)
+        self.temperatures.append(self._cooling_schedule.t)
         return super()._scramble(*args, **kwargs)
 
     @property

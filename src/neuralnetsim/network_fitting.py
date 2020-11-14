@@ -3,6 +3,7 @@ __all__ = ["fit_network"]
 
 import networkx as nx
 import random
+import numpy as np
 from neuralnetsim.cooling import AdaptiveCoolingSchedule
 from neuralnetsim.energy import NeuralEnergyFunction
 from neuralnetsim.annealing import NetworkAnnealer
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Union
 from distributed import Client
 
 
@@ -33,7 +35,7 @@ def network_fitting_worker(kwargs: Dict) -> nx.DiGraph:
 
 def fit_network(graph: nx.DiGraph,
                 client: Client,
-                target_modularities: List[float],
+                target_modularities: Union[List[float], np.ndarray],
                 graphs_per_modularity: int,
                 energy_kwargs: Dict[str, Any],
                 cooling_kwargs: Dict[str, Any],
@@ -67,17 +69,24 @@ def fit_network(graph: nx.DiGraph,
           'cooling_kwargs': cooling_kwargs,
           'annealing_kwargs': annealing_kwargs,
           'seed': rng.randint(0, 2**31)}
-         for modularity in enumerate(target_modularities)
+         for modularity in target_modularities
          for trial in range(graphs_per_modularity)],
         pure=False)
     fitted_graphs = client.gather(annealers)
     results = {
+        'original': graph,
         'graphs': fitted_graphs,
-        'trials': [trial for _ in enumerate(target_modularities)
+        'trials': [trial for _ in target_modularities
                    for trial in range(graphs_per_modularity)],
         'target_modularities': [
-            modularity for modularity in enumerate(target_modularities)
+            modularity for modularity in target_modularities
             for _ in range(graphs_per_modularity)
-        ]
+        ],
+        'parameters': {'modularities': target_modularities,
+                       'trials': graphs_per_modularity,
+                       'energy_kwargs': energy_kwargs,
+                       'cooling_kwargs': cooling_kwargs,
+                       'annealing_kwargs': annealing_kwargs,
+                       'seed': seed}
     }
     save(results, save_dir.joinpath(prefix + "_fit_network_results.pyobj"))

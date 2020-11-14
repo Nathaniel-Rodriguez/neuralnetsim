@@ -115,7 +115,6 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         :param start: The annealing step at which to begin cooling.
         :param stop: The annealing step at which to halt cooling.
         :param tmin: the minimum allowed temperature. Default 0.0
-
         """
         self._t0 = t0  # initial temperature
         self._tc = self._t0  # current temperature
@@ -182,6 +181,7 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
             tc = self._tc
         elif (self._tc >= self._tmin) and (self._step_count < self._stop):
             tc = self._update_temperature()
+            # the temperature is recorded in update_temperature
         else:
             self._t_record.append(self._tc)
             tc = self._tc
