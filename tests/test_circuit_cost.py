@@ -2,7 +2,6 @@ import unittest
 import neuralnetsim
 import numpy as np
 import networkx as nx
-import nest
 
 
 class TestCricuitCost(unittest.TestCase):
@@ -19,14 +18,14 @@ class TestCricuitCost(unittest.TestCase):
         graph.add_edge(6, 5, weight=1.0)
         pars = neuralnetsim.CircuitParameters(
             graph, "iaf_tum_2000",
-            {},
-            {"model": "static_synapse", "delay": 1.0},
+            {'t_ref_abs': 1.0, 't_ref_tot': 1.0},
+            {"model": "static_synapse", "delay": 0.1},
             {"mean": 2.0, "std": 1.0, "dt": 0.1, "frequency": 10.0}
         )
         kpars = {'grng_seed': 684, 'rng_seeds': [658], 'resolution': 0.1}
         trans = neuralnetsim.ArrayTranslator(
             graph,
-            [neuralnetsim.ValueTranslator("delay", 0.0, 2.0),
+            [neuralnetsim.ValueTranslator("delay", 0.0, 5.0),
              neuralnetsim.ValueTranslator("weight_scale", 0.0, 8000.0)],
             ["weight_scale"],
             [],
@@ -42,4 +41,4 @@ class TestCricuitCost(unittest.TestCase):
             dm.get_duration("training", 0, 2.0),
             5.0
         )
-        print(cost)
+        self.assertAlmostEqual(13.99, cost, 1)

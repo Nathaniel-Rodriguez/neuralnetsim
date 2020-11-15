@@ -38,7 +38,7 @@ def circuit_cost(x: np.ndarray,
     with TrialManager(kernel_parameters, circuit_parameters, data) as circuit:
         circuit.run(run_duration)
         model_spikes = circuit.get_spike_trains()
-        cost = sum(coincidence_factor([model_spikes[node]], data[node],
-                                      run_duration, coincidence_window)
-                   for node in model_spikes.keys())
-    return cost
+        costs = [coincidence_factor([model_spikes[node]], data[node],
+                                    run_duration, coincidence_window)
+                 for node in model_spikes.keys()]
+    return sum(cost for cost in costs if not np.isnan(cost))
