@@ -15,7 +15,8 @@ class DataManager:
     """
     def __init__(self, data: Dict[int, np.ndarray],
                  num_folds: int = 1,
-                 test_ratio: float = 0.1):
+                 test_ratio: float = 0.1,
+                 start_buffer: float = 0.0):
         """
         :param data: A dictionary keyed by neuron id and valued by a 1-D numpy
         array of spike-times.
@@ -23,6 +24,7 @@ class DataManager:
         :param test_ratio: The fraction of data to set aside for testing.
         The validation ratio will be the same. All other data is left for
         training.
+        :param start_buffer: Pad spike times by this amount at the start.
         """
         if num_folds < 1:
             raise ValueError("Number of folds {0} has to be greater than or"
@@ -36,10 +38,13 @@ class DataManager:
         self._data = data
         self._num_folds = num_folds
         self._test_ratio = test_ratio
+        self._start_buffer = start_buffer
         self._min_time = min(min(t for t in spike_times)
-                             for spike_times in self._data.values())
+                             for spike_times in self._data.values()
+                             if len(spike_times) > 0)
         self._max_time = max(max(t for t in spike_times)
-                             for spike_times in self._data.values())
+                             for spike_times in self._data.values()
+                             if len(spike_times) > 0)
         self._cap = np.arange(self._max_time, 0.0,
                               -self._test_ratio
                               * self._max_time)[:self._num_folds]
@@ -72,6 +77,7 @@ class DataManager:
             raise ValueError("Invalid fold {0}. Folds range"
                              " from 0 to num_folds-1".format(str(fold)))
         return {neuron: times[times < self._validation_bounds[fold]]
+                        + self._start_buffer
                 for neuron, times in self._data.items()}
 
     def get_validation_fold(self, fold: int) -> Dict[int, np.ndarray]:
@@ -87,7 +93,7 @@ class DataManager:
                              " from 0 to num_folds-1".format(str(fold)))
         return {neuron: times[np.logical_and(times >= self._validation_bounds[fold],
                                              times < self._test_bounds[fold])]
-                        - self._validation_bounds[fold]
+                        - self._validation_bounds[fold] + self._start_buffer
                 for neuron, times in self._data.items()}
 
     def get_test_fold(self, fold: int) -> Dict[int, np.ndarray]:
@@ -103,7 +109,7 @@ class DataManager:
                              " from 0 to num_folds-1".format(str(fold)))
         return {neuron: times[np.logical_and(times >= self._test_bounds[fold],
                                              times <= self._cap[fold])]
-                        - self._test_bounds[fold]
+                        - self._test_bounds[fold] + self._start_buffer
                 for neuron, times in self._data.items()}
 
     def get_duration(self, split_type: str, fold: int, buffer: float = 0.0) -> float:
@@ -116,11 +122,11 @@ class DataManager:
         :return: A suggested run duration for a simulation.
         """
         if split_type == "training":
-            return self._validation_bounds[fold] + buffer
+            return round(self._validation_bounds[fold] + buffer, 1)
         elif split_type == "validation":
-            return self._test_bounds[fold] + buffer - self._validation_bounds[fold]
+            return round(self._test_bounds[fold] + buffer - self._validation_bounds[fold], 1)
         elif split_type == "test":
-            return self._cap[fold] + buffer - self._test_bounds[fold]
+            return round(self._cap[fold] + buffer - self._test_bounds[fold], 1)
         else:
             raise ValueError("Invalid split_type of {0}. Must choose 'training',"
                              " 'validation', or 'test'.".format(split_type))

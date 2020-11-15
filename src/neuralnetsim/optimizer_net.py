@@ -62,26 +62,29 @@ class SubNetwork:
         # create nodes
         self._neuron = nest.Create(neuron_model, n=1,
                                    params=neuron_parameters)
-        self._parrots = nest.Create("parrot_neuron",
-                                    n=len(self._presynaptic_nodes))
+        # if there are no presynaptic nodes then there is nothing to simulate
+        if len(self._presynaptic_nodes) > 0:
+            self._parrots = nest.Create("parrot_neuron",
+                                        n=len(self._presynaptic_nodes))
+            self._spike_generators = nest.Create(
+                "spike_generator", len(self._presynaptic_nodes),
+                {'allow_offgrid_times': True})
         self._noise = nest.Create("noise_generator", n=1,
                                   params=noise_parameters)
         self._detector = nest.Create("spike_detector")
-        self._spike_generators = nest.Create(
-            "spike_generator", len(self._presynaptic_nodes),
-            {'allow_offgrid_times': True})
 
         # make connections
-        nest.Connect(
-            self._parrots, self._neuron, "all_to_all",
-            self._append_weights(synaptic_parameters, weight_scale))
         nest.Connect(self._noise, self._neuron)
         nest.Connect(self._neuron, self._detector)
-        nest.Connect(
-            self._spike_generators,
-            self._parrots,
-            "one_to_one",
-            {"model": "static_synapse", "weight": 1.0, "delay": 0.1})
+        if len(self._presynaptic_nodes) > 0:
+            nest.Connect(
+                self._parrots, self._neuron, "all_to_all",
+                self._append_weights(synaptic_parameters, weight_scale))
+            nest.Connect(
+                self._spike_generators,
+                self._parrots,
+                "one_to_one",
+                {"model": "static_synapse", "weight": 1.0, "delay": 0.1})
 
         if inputs is not None:
             self.set_inputs(inputs)
@@ -109,8 +112,9 @@ class SubNetwork:
         if len(input_list) != len(self._presynaptic_nodes):
             raise AssertionError("Number of inputs into subnetwork did not"
                                  " match the number of presynaptic connections")
-        nest.SetStatus(self._spike_generators,
-                       [{'spike_times': inputs} for inputs in input_list])
+        if len(self._presynaptic_nodes) > 0:
+            nest.SetStatus(self._spike_generators,
+                           [{'spike_times': inputs} for inputs in input_list])
 
     def get_spike_output(self) -> np.ndarray:
         """
@@ -142,7 +146,11 @@ class SubNetwork:
         s += "="*7 + "NOISE" + "="*7 + "\n"
         s += str(nest.GetStatus(self._noise)) + "\n"
         s += "="*7 + "GENERATORS" + "="*7 + "\n"
-        s += "\n".join(map(str, (out for out in nest.GetStatus(self._spike_generators))))
+        if len(self._presynaptic_nodes) == 0:
+            s += "No presynaptic connections"
+        else:
+            s += "\n".join(map(str, (out for out in nest.GetStatus(
+                self._spike_generators))))
         return s
 
 
@@ -157,7 +165,7 @@ class OptimizerNetwork:
                  spike_times: Dict[int, np.ndarray]):
         """
         :param circuit_parameters: A CircuitParameters object with parameters
-        defined for the model.
+        defined for the model. Requires a 'weight_scale' global parameter.
         :param spike_times: Input spike times for the simulation.
         """
         self._circuit_parameters = circuit_parameters

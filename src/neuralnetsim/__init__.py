@@ -15,3 +15,4 @@ from neuralnetsim.optimizer_net import *
 from neuralnetsim.scmaes import *
 from neuralnetsim.coincidence_factor import *
 from neuralnetsim.network_fitting import *
+from neuralnetsim.circuit_cost import *

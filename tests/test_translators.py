@@ -67,7 +67,7 @@ class TestArrayTranslator(unittest.TestCase):
         self.s = ["s1"]
         self.o = ["o1"]
         self.translator = neuralnetsim.ArrayTranslator(
-            self.graph, self.t_list, self.n, self.s, self.o, self.g)
+            self.graph, self.t_list, self.g, self.o, self.s, self.n)
 
     def test_array_size(self):
         self.assertEqual(self.translator.required_array_size(), 3 + 2 * 3)

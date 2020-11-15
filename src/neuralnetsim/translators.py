@@ -76,27 +76,29 @@ class ArrayTranslator:
     parameters or vice versa.
     """
     def __init__(self, graph: nx.DiGraph, translators: List[ValueTranslator],
-                 neuron_keys: Sequence[str], synapse_keys: Sequence[str],
-                 noise_keys: Sequence[str], global_keys: Sequence[str]):
+                 global_keys: Sequence[str], noise_keys: Sequence[str],
+                 synapse_keys: Sequence[str], neuron_keys: Sequence[str]):
         """
+        Interpretation order is 'global', 'noise', 'synapse', and 'neuron'.
+        With 'neuron' being looped for how ever many neurons there are.
         :param graph: The graph used for the neural circuit optimization.
         :param translators: A list of translators with keys associated with
         all parameters that will be optimized.
-        :param neuron_keys: A set of keys associated with NEST neuron models.
-        :param synapse_keys: A set of keys associated with NEST synapse models.
-        :param noise_keys: A set of keys associated with NEST noise models.
         :param global_keys: A set of global keys.
+        :param noise_keys: A set of keys associated with NEST noise models.
+        :param synapse_keys: A set of keys associated with NEST synapse models.
+        :param neuron_keys: A set of keys associated with NEST neuron models.
         """
         self._translators = translators
-        self._neuron_keys = list(neuron_keys)
-        self._synapse_keys = list(synapse_keys)
-        self._noise_keys = list(noise_keys)
         self._global_keys = list(global_keys)
+        self._noise_keys = list(noise_keys)
+        self._synapse_keys = list(synapse_keys)
+        self._neuron_keys = list(neuron_keys)
 
-        self._neuron_parameters = {neuron_id: {} for neuron_id in graph.nodes()}
-        self._synapse_parameters = {}
-        self._noise_parameters = {}
         self._global_parameters = {}
+        self._noise_parameters = {}
+        self._synapse_parameters = {}
+        self._neuron_parameters = {neuron_id: {} for neuron_id in graph.nodes()}
 
         self._key_order = self._global_keys\
                           + self._noise_keys\
