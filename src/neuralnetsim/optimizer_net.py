@@ -28,7 +28,8 @@ class SubNetwork:
                  noise_parameters: Dict,
                  neuron_model: str,
                  weight_scale: float,
-                 inputs: List[np.ndarray] = None):
+                 inputs: List[np.ndarray] = None,
+                 enable_input_detectors: bool = False):
         """
         Initializes the subnetwork with the given parameters. It creates a
         network of a single model neuron with parrot neurons for all its
@@ -50,6 +51,8 @@ class SubNetwork:
         :param inputs: Optionally set the inputs into the neural network. If set
         should be a list of spike times for each presynaptic input into the
         target neuron.
+        :param enable_input_detectors: If True spike detectors will be created
+        for input neurons and will log the simulated spikes (default: False)
         """
         self._graph_node_id = node_id
         self._presynaptic_nodes = list(graph.predecessors(self._graph_node_id))
@@ -88,6 +91,18 @@ class SubNetwork:
 
         if inputs is not None:
             self.set_inputs(inputs)
+
+        self._parrot_detectors = None
+        if enable_input_detectors:
+            self._add_parrot_detectors()
+
+    def _add_parrot_detectors(self):
+        """
+        Adds spike detectors to the parrot neurons.
+        """
+        self._parrot_detectors = nest.Create("spike_detector",
+                                             len(self._parrots))
+        nest.Connect(self._parrots, self._parrot_detectors, "one_to_one")
 
     def _append_weights(self, synaptic_parameters: Dict, weight_scale: float):
         """

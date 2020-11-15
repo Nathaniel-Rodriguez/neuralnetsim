@@ -19,7 +19,8 @@ class TestSubNetwork(unittest.TestCase):
         syn_pars = {"model": "static_synapse", "delay": 2.0}
         noise_pars = {"mean": 2.0, "std": 1.0, "dt": 0.1, "frequency": 10.0}
         self.net = neuralnetsim.SubNetwork(graph, 1, neuron_pars, syn_pars,
-                                           noise_pars, "iaf_tum_2000", 8000.0)
+                                           noise_pars, "iaf_tum_2000", 8000.0,
+                                           enable_input_detectors=True)
 
     def tearDown(self) -> None:
         nest.ResetKernel()
@@ -41,6 +42,14 @@ class TestSubNetwork(unittest.TestCase):
         for i, spike_time in enumerate(outputs):
             self.assertAlmostEqual(self.net.get_spike_output()[i],
                                    spike_time, 2)
+
+    def test_parrots(self):
+        self.net.set_inputs([np.array([10.]), np.array([15.0]), np.array([3.5])])
+        nest.Simulate(50.0)
+        parrot_output = nest.GetStatus(self.net._parrot_detectors)
+        self.assertAlmostEqual(parrot_output[0]['events']['times'][0], 10.1, 1)
+        self.assertAlmostEqual(parrot_output[1]['events']['times'][0], 15.1, 1)
+        self.assertAlmostEqual(parrot_output[2]['events']['times'][0], 3.6, 1)
 
 
 class TestOptimizerNetwork(unittest.TestCase):
