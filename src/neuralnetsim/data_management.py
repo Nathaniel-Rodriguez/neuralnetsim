@@ -1,4 +1,5 @@
-__all__ = ["DataManager"]
+__all__ = ["DataManager",
+           "TrainingManager"]
 
 
 import numpy as np
@@ -130,3 +131,46 @@ class DataManager:
         else:
             raise ValueError("Invalid split_type of {0}. Must choose 'training',"
                              " 'validation', or 'test'.".format(split_type))
+
+
+class TrainingManager:
+    """
+    Holds an internal state that can be used to carry out smaller batches of
+    training steps from training data.
+    """
+    def __init__(self, data: Dict[int, np.ndarray],
+                 duration: float,
+                 batch_size: float,
+                 start_buffer: float = 0.1):
+        """
+        :param data: Data from the data manager. Keyed by neuron id and
+        valued by the spike times.
+        :param duration: Full duration of data set as specified by DataManager.
+        :param batch_size: Duration of a training batch in ms.
+        :param start_buffer: Pad spike times by this amount at the start.
+        """
+        self._data = data
+        self._duration = duration
+        self._batch_size = batch_size
+        self._start_buffer = start_buffer
+        self._epoch = 0
+
+    def get_duration(self):
+        return self._batch_size
+
+    def get_training_data(self) -> Dict[int, np.ndarray]:
+        """
+        :return: A subset of the training data for a given epoch. Epochs are
+        incremented each time this method is called.
+        """
+        # if the end of the data set is reached, start at the beginning
+        if (self._epoch + 1) * self._batch_size > self._duration:
+            self._epoch = 0
+
+        start = self._epoch * self._batch_size
+        self._epoch += 1
+        end = self._epoch * self._batch_size
+        return {neuron: spikes[np.logical_and(spikes >= start,
+                                              spikes < end)]
+                + self._start_buffer
+                for neuron, spikes in self._data.items()}
