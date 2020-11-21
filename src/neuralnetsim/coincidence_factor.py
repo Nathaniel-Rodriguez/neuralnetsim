@@ -55,8 +55,6 @@ def coincidence_factor(model_spike_times: List[np.ndarray],
     """
     Calculates the coincidence factor as described in "Predicting neuronal
     activity with simple models of the threshold type".
-    Will return inf if data spikes are empty, and nan if both model and data
-    spikes are empty.
     :param model_spike_times: A sequence of 1-D arrays with model spike times.
     :param data_spike_times: A 1-D array of data spike times.
     :param time_window: The time window of the experiment.
@@ -66,17 +64,20 @@ def coincidence_factor(model_spike_times: List[np.ndarray],
     """
     model_num_spikes = np.mean([len(spikes) for spikes in model_spike_times])
     data_num_spikes = len(data_spike_times)
-
-    avg_coincidence = np.mean([coincidence_detector(spikes, data_spike_times,
-                                                    coincidence_window)
-                               for spikes in model_spike_times])
-
-    data_spike_rate = data_num_spikes / time_window
     model_spike_rate = model_num_spikes / time_window
 
-    expected_coincidence = 2.0 * data_spike_rate * coincidence_window * data_num_spikes
-    norm = 2.0 / (1. - 2. * coincidence_window * model_spike_rate)
+    if data_num_spikes > 0:
+        avg_coincidence = np.mean([coincidence_detector(spikes, data_spike_times,
+                                                        coincidence_window)
+                                   for spikes in model_spike_times])
+        data_spike_rate = data_num_spikes / time_window
+        expected_coincidence = 2.0 * data_spike_rate * coincidence_window * data_num_spikes
+        norm = 2.0 / (1. - 2. * coincidence_window * model_spike_rate)
 
-    return 2.0 * abs((data_spike_rate - model_spike_rate) / data_spike_rate) \
-            - ((avg_coincidence - expected_coincidence)
-               / (model_num_spikes + data_num_spikes)) * norm
+        cf = 2.0 * abs((data_spike_rate - model_spike_rate) / data_spike_rate) \
+                - ((avg_coincidence - expected_coincidence)
+                   / (model_num_spikes + data_num_spikes)) * norm
+    else:
+        cf = -model_spike_rate
+
+    return cf

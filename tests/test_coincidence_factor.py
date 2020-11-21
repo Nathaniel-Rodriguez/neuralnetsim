@@ -59,7 +59,7 @@ class TestCoincidenceFactory(unittest.TestCase):
         model_spikes = [np.array([0.5, 1.0, 2.0, 3.0, 4.0])]
         data_spikes = np.array([])
         factor = neuralnetsim.coincidence_factor(model_spikes, data_spikes, 5.0, 0.1)
-        self.assertAlmostEqual(factor, np.inf)
+        self.assertAlmostEqual(factor, -1.0)
 
         model_spikes = [np.array([])]
         data_spikes = np.array([0.5, 1.0, 2.0, 3.0, 4.0])
@@ -69,4 +69,4 @@ class TestCoincidenceFactory(unittest.TestCase):
         model_spikes = [np.array([])]
         data_spikes = np.array([])
         factor = neuralnetsim.coincidence_factor(model_spikes, data_spikes, 5.0, 0.2)
-        self.assertTrue(np.isnan(factor))
+        self.assertAlmostEqual(factor, 0.0)
