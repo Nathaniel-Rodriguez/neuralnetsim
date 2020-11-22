@@ -77,7 +77,8 @@ class ArrayTranslator:
     """
     def __init__(self, graph: nx.DiGraph, translators: List[ValueTranslator],
                  global_keys: Sequence[str], noise_keys: Sequence[str],
-                 synapse_keys: Sequence[str], neuron_keys: Sequence[str]):
+                 synapse_keys: Sequence[str], neuron_keys: Sequence[str],
+                 nodes: List[int] = None):
         """
         Interpretation order is 'global', 'noise', 'synapse', and 'neuron'.
         With 'neuron' being looped for how ever many neurons there are.
@@ -88,7 +89,14 @@ class ArrayTranslator:
         :param noise_keys: A set of keys associated with NEST noise models.
         :param synapse_keys: A set of keys associated with NEST synapse models.
         :param neuron_keys: A set of keys associated with NEST neuron models.
+        :param nodes: A list of training node IDs from the graph (default: None).
+        If set, this list will be used instead of all nodes for generating the
+        parameters. Use when only a subset of the graphs neurons will be trained.
         """
+        if nodes is not None:
+            self._nodes = nodes
+        else:
+            self._nodes = list(graph.nodes())
         self._translators = translators
         self._global_keys = list(global_keys)
         self._noise_keys = list(noise_keys)
@@ -98,16 +106,30 @@ class ArrayTranslator:
         self._global_parameters = {}
         self._noise_parameters = {}
         self._synapse_parameters = {}
-        self._neuron_parameters = {neuron_id: {} for neuron_id in graph.nodes()}
+        self._neuron_parameters = {neuron_id: {} for neuron_id in self._nodes}
 
         self._key_order = self._global_keys\
                           + self._noise_keys\
                           + self._synapse_keys\
                           + [key
-                             for _ in range(nx.number_of_nodes(graph))
+                             for _ in range(len(self._nodes))
                              for key in self._neuron_keys]
         self._array_size = len(self._key_order)
         self._model_parameters = np.zeros(self._array_size)
+
+    def __str__(self):
+        s = "Translator\n"
+        s += "="*7 + "Global" + "="*7 + "\n"
+        s += str(self._global_parameters) + "\n"
+        s += "="*7 + "Noise" + "="*7 + "\n"
+        s += str(self._noise_parameters) + "\n"
+        s += "="*7 + "Synapse" + "="*7 + "\n"
+        s += str(self._synapse_parameters) + "\n"
+        s += "="*7 + "Neurons" + "="*7 + "\n"
+        for neuron_id, pars in self._neuron_parameters.items():
+            s += "\tNEURON = " + str(neuron_id) + "\n"
+            s += "\t" + str(pars) + "\n"
+        return s
 
     @property
     def synapse_parameters(self) -> Dict[str, Any]:

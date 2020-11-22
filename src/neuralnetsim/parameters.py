@@ -4,6 +4,7 @@ __all__ = ["CircuitParameters"]
 import networkx as nx
 from typing import Dict
 from typing import Any
+from typing import List
 
 
 class CircuitParameters:
@@ -17,7 +18,8 @@ class CircuitParameters:
                  static_neuron_parameters: Dict[str, Any] = None,
                  static_synaptic_parameters: Dict[str, Any] = None,
                  static_noise_parameters: Dict[str, Any] = None,
-                 static_global_parameters: Dict[str, Any] = None):
+                 static_global_parameters: Dict[str, Any] = None,
+                 nodes: List[int] = None):
         """
         :param graph: Network associated with the parameterization.
         :param neuron_model: A NEST neuron model.
@@ -30,13 +32,19 @@ class CircuitParameters:
         set across all noise generators and not be subject to optimization.
         :param static_global_parameters: Any global parameters that are not
         subject to optimization.
+        :param nodes: A list of training node IDs from the graph (default: None).
+        If set, this list will be used instead of all nodes for generating the
+        parameters. Use when only a subset of the graphs neurons will be trained.
         """
+        if nodes is not None:
+            self._nodes = nodes
+        else:
+            self._nodes = list(graph.nodes())
         self.network = graph
         self.neuron_model = neuron_model
-
         self.neuron_parameters = {
             neuron_id: {} if static_neuron_parameters is None else static_neuron_parameters
-            for neuron_id in graph.nodes()}
+            for neuron_id in self._nodes}
 
         if static_synaptic_parameters is None:
             self.synaptic_parameters = {}
@@ -65,3 +73,10 @@ class CircuitParameters:
     def extend_neuron_parameters(self, parameters_by_node: Dict[int, Dict[str, Any]]):
         for node in self.neuron_parameters.keys():
             self.neuron_parameters[node].update(parameters_by_node[node])
+
+    def training_nodes(self) -> List[int]:
+        """
+        :return: A list of node IDs for the neurons in the graph that will be
+        trained.
+        """
+        return self._nodes

@@ -185,7 +185,7 @@ class OptimizerNetwork:
         """
         self._circuit_parameters = circuit_parameters
         self._subnets = []
-        for neuron in self._circuit_parameters.network.nodes():
+        for neuron in self._circuit_parameters.training_nodes():
             subnet = SubNetwork(
                     self._circuit_parameters.network,
                     neuron,
