@@ -389,3 +389,7 @@ class SCMAEvoStrat:
             if enable_path_history:
                 self.sigma_path_history.append(np.mean(self._state._s_path))
                 self.cov_path_history.append(np.mean(self._state._c_mat_path))
+
+    @property
+    def centroid(self):
+        return self._state.centroid
