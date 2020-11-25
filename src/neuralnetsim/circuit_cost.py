@@ -17,7 +17,9 @@ def circuit_cost(x: np.ndarray,
                  kernel_parameters: Dict,
                  data: Dict[int, np.ndarray],
                  run_duration: float,
-                 coincidence_window: float) -> float:
+                 coincidence_window: float,
+                 kernel_seeder: np.random.RandomState = None,
+                 return_model_spikes: bool = False) -> float:
     """
     Calculates the cost for a given parameter array. Uses the coincidence
     factor to assess how well all model spikes matched against their respective
@@ -30,8 +32,13 @@ def circuit_cost(x: np.ndarray,
     :param data: A dictionary keyed by node Id and valued by spike times.
     :param run_duration: How long to run the NEST simulation of the model (ms).
     :param coincidence_window: Size of the coincidence function window (ms).
+    :param kernel_seeder: Optionally sets kernel seeds.
+    :param return_model_spikes: Whether to return the model's spike times.
     :return: The sum of the coincidence factors for all neurons in the model.
     """
+    if kernel_seeder is not None:
+        kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
+                                  'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
     translator.from_optimizer(x)
     circuit_parameters.extend_global_parameters(translator.global_parameters)
     circuit_parameters.extend_neuron_parameters(translator.neuron_parameters)
@@ -43,7 +50,12 @@ def circuit_cost(x: np.ndarray,
         costs = [coincidence_factor([model_spikes[node]], data[node],
                                     run_duration, coincidence_window)
                  for node in model_spikes.keys()]
-    return sum(cost for cost in costs if not np.isnan(cost))
+
+    cost = sum(cost for cost in costs if not np.isnan(cost))
+    if return_model_spikes:
+        return cost, model_spikes
+    else:
+        return cost
 
 
 def training_cost(x: np.ndarray,
@@ -51,7 +63,8 @@ def training_cost(x: np.ndarray,
                   translator: ArrayTranslator,
                   kernel_parameters: Dict,
                   training_manager: TrainingManager,
-                  coincidence_window: float) -> float:
+                  coincidence_window: float,
+                  kernel_seeder: np.random.RandomState = None) -> float:
     """
     Calculates the cost for a given parameter array. Uses the coincidence
     factor to assess how well all model spikes matched against their respective
@@ -64,8 +77,12 @@ def training_cost(x: np.ndarray,
     :param kernel_parameters: Parameters for the NEST kernel.
     :param training_manager: A TrainingManager.
     :param coincidence_window: Size of the coincidence function window (ms).
+    :param kernel_seeder: Optionally sets kernel seeds.
     :return: The sum of the coincidence factors for all neurons in the model.
     """
+    if kernel_seeder is not None:
+        kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
+                                  'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
     translator.from_optimizer(x)
     circuit_parameters.extend_global_parameters(translator.global_parameters)
     circuit_parameters.extend_neuron_parameters(translator.neuron_parameters)
