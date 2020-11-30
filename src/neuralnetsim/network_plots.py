@@ -22,15 +22,18 @@ from neuralnetsim import calc_nodal_strength_difference_distribution
 
 
 def plot_weight_distribution(graph: nx.DiGraph,
-                             save_dir: Path = Path.cwd(),
+                             save_dir: Path = None,
                              prefix: str = ""):
     """
     Creates a pdf plot of the neural slice weight distribution in log scale.
+
     :param graph: The networkx graph with a "weight" edge attribute.
     :param save_dir: Directory to save the plot to.
     :param prefix: A prefix to prepend to the plot name.
     :return: None
     """
+    if save_dir is None:
+        save_dir = Path.cwd()
     weights = [weight for weight in nx.get_edge_attributes(graph, "weight").values()]
     seaborn.histplot(data=weights,
                      stat="density",
@@ -42,12 +45,13 @@ def plot_weight_distribution(graph: nx.DiGraph,
 
 def plot_slice(graph: nx.DiGraph,
                color_key: str = "level2",
-               save_dir: Path = Path.cwd(),
+               save_dir: Path = None,
                prefix: str = ""):
     """
     Creates a pdf plot of the neural slice with nodes colored by community and
     positioned from data which requires the node "pos" attribute. Edges
     require the "weight" attribute.
+
     :param graph: A networkx graph with "pos" node attribute and edge "weight"
                   attributes.
     :param color_key: The community key for node coloring.
@@ -55,6 +59,8 @@ def plot_slice(graph: nx.DiGraph,
     :param prefix: A prefix to prepend to the plot name.
     :return: None
     """
+    if save_dir is None:
+        save_dir = Path.cwd()
     nx.draw_networkx_nodes(
         graph,
         nx.get_node_attributes(graph, "pos"),
@@ -99,8 +105,10 @@ def plot_ccdf_distributions(original_dist: np.ndarray,
                             yscale: str = "linear",
                             original_legend_label: str = "original",
                             comparison_legend_label: str = "comparison",
-                            save_dir: Path = Path.cwd(),
+                            save_dir: Path = None,
                             prefix: str = ""):
+    if save_dir is None:
+        save_dir = Path.cwd()
     for dist in comparison_dists:
         ecdf = ECDF(dist)
         x = np.sort(dist)
@@ -129,8 +137,10 @@ def plot_ccdf_distributions(original_dist: np.ndarray,
 def plot_graph_strength_distributions(original_graph: nx.DiGraph,
                                       comparison_graphs: List[nx.DiGraph],
                                       direction="in",
-                                      save_dir: Path = Path.cwd(),
+                                      save_dir: Path = None,
                                       prefix: str = ""):
+    if save_dir is None:
+        save_dir = Path.cwd()
     original_dist = calc_strength_distribution(original_graph, direction)
     comparison_dists = [calc_strength_distribution(alt_graph, direction)
                         for alt_graph in comparison_graphs]
@@ -148,8 +158,10 @@ def plot_graph_strength_distributions(original_graph: nx.DiGraph,
 
 def plot_graph_nodal_strength_differences(original_graph: nx.DiGraph,
                                           comparison_graphs: List[nx.DiGraph],
-                                          save_dir: Path = Path.cwd(),
+                                          save_dir: Path = None,
                                           prefix: str = ""):
+    if save_dir is None:
+        save_dir = Path.cwd()
     original_dist = calc_nodal_strength_difference_distribution(original_graph)
     comparison_dists = [calc_nodal_strength_difference_distribution(alt_graph)
                         for alt_graph in comparison_graphs]
@@ -175,8 +187,10 @@ def plot_collapsed_ccdf_distributions(
         yscale: str = "linear",
         original_legend_label: str = "originals",
         comparison_legend_label: str = "comparison",
-        save_dir: Path = Path.cwd(),
+        save_dir: Path = None,
         prefix: str = ""):
+    if save_dir is None:
+        save_dir = Path.cwd()
     for dist in comparison_dists:
         ecdf = ECDF(collapse_function(dist), side='left')
         x = np.sort(collapse_function(dist))
@@ -210,8 +224,10 @@ def plot_graph_collapsed_strength_distributions(
         original_graphs: List[nx.DiGraph],
         comparison_graphs: List[nx.DiGraph],
         direction="in",
-        save_dir: Path = Path.cwd(),
+        save_dir: Path = None,
         prefix: str = ""):
+    if save_dir is None:
+        save_dir = Path.cwd()
     original_dists = [calc_strength_distribution(original_graph, direction)
                       for original_graph in original_graphs]
     comparison_dists = [calc_strength_distribution(alt_graph, direction)
@@ -234,8 +250,10 @@ def plot_graph_collapsed_nodal_strength_differences(
         collapse_function: Callable[[np.ndarray], np.ndarray],
         original_graphs: List[nx.DiGraph],
         comparison_graphs: List[nx.DiGraph],
-        save_dir: Path = Path.cwd(),
+        save_dir: Path = None,
         prefix: str = ""):
+    if save_dir is None:
+        save_dir = Path.cwd()
     original_dists = [calc_nodal_strength_difference_distribution(original_graph)
                       for original_graph in original_graphs]
     comparison_dists = [calc_nodal_strength_difference_distribution(alt_graph)

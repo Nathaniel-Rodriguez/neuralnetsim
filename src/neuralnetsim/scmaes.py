@@ -53,7 +53,7 @@ class EvoStratState:
         :param d_s: Sigma damping constant [defaulted].
         :param rnd_table_size: Size of random number table [defaulted].
         :param max_table_step: Maximum random step-size for controlling level
-        of randomness [defaulted].
+            of randomness [defaulted].
         :param dtype: Numpy data type for arrays (default: np.float32).
         """
         self._dtype = dtype
@@ -204,8 +204,8 @@ class EvoStratWorker:
     def __init__(self, cost_kwargs: Dict = None, *args, **kwargs):
         """
         :param cost_kwargs: Any heavy arguments for the cost function
-        that should only be initialized once. Will be stored here and will be
-        forwarded to the cost function on call.
+            that should only be initialized once. Will be stored here and will be
+            forwarded to the cost function on call.
         :param args: Arguments for the EvoStratState.
         :param kwargs: Arguments for the EvoStratState.
         """
@@ -243,6 +243,7 @@ def dispatch_work(cost_function: Callable[[np.ndarray, Any], float],
                   worker_id: int) -> Tuple[float, int, int]:
     """
     Dispatches a new population evaluation workload to workers.
+
     :param cost_function: A function that evaluates the cost of a given agent.
     :param worker: The evolutionary strategy's worker.
     :param pop_id: ID for the member of the population to be evaluated.
@@ -273,6 +274,7 @@ class SCMAEvoStrat:
     def to_file(self, filename: Path):
         """
         Writes out the history of the ES to file.
+
         :param filename: Save file path.
         """
         save(

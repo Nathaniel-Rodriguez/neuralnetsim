@@ -19,6 +19,7 @@ from distributed import Client
 def network_fitting_worker(kwargs: Dict) -> nx.DiGraph:
     """
     A Dask worker function for the fit_network function.
+
     :param kwargs: A dictionary of keyword arguments passed to the worker.
     :return: A fitted network.
     """
@@ -41,26 +42,29 @@ def fit_network(graph: nx.DiGraph,
                 cooling_kwargs: Dict[str, Any],
                 annealing_kwargs: Dict[str, Any],
                 seed: int,
-                save_dir: Path = Path.cwd(),
+                save_dir: Path = None,
                 prefix: str = "test"):
     """
     Initiates a Dask run that fits a given number of graphs to multiple
     modularities. Saves the results in a `fit_newtwork_results.pyobj` file.
     This is a Python object file.
+
     :param graph: The graph that will be fit too.
     :param client: A Dask client for parallel distribution.
     :param target_modularities: A list of target modularities to fit networks too.
     :param graphs_per_modularity: The number of fitted graphs to generated for
-    each target modularity.
+        each target modularity.
     :param energy_kwargs: A dictionary of keyword arguments for the energy function.
     :param cooling_kwargs: A dictionary of keyword arguments for the cooling
-    schedule.
+        schedule.
     :param annealing_kwargs: A dictionary of keyword arguments for the annealer.
     :param seed: Used for generating seeds for the annealers.
     :param save_dir: The directory in which to save the results.
     :param prefix: A filename prefix to prepend to the output file.
     :return: None
     """
+    if save_dir is None:
+        save_dir = Path.cwd()
     rng = random.Random(seed)
     annealers = client.map(
         network_fitting_worker,

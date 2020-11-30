@@ -185,12 +185,12 @@ def random_slices(rng, iterator_size, size_of_slice, max_step=1):
     This will return additional slice each time it wraps around the
     iterator
 
-    iterator_size - the number of elements in the iterator
-    size_of_slice - the number of elements the slices will cover
-    max_step - the maximum number of steps a slice will take.
-                This affects the number of slice objects created, as
-                larger max_step will create more wraps around the iterator
-                and so return more slice objects
+    :param iterator_size: the number of elements in the iterator
+    :param size_of_slice: the number of elements the slices will cover
+    :param max_step: the maximum number of steps a slice will take.
+        This affects the number of slice objects created, as
+        larger max_step will create more wraps around the iterator
+        and so return more slice objects
 
     The number of elements is not guaranteed when slices overlap themselves
     """

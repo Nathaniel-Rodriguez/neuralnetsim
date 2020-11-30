@@ -25,7 +25,7 @@ class ValueTranslator:
     def __init__(self, key: str, vmin: float, vmax: float):
         """
         :param key: A string specifying the kind of parameter this translator
-        is responsible for.
+            is responsible for.
         :param vmin: The minimum allowed model value for this parameter.
         :param vmax: The maximum allowed model value for this parameter.
         """
@@ -36,6 +36,7 @@ class ValueTranslator:
     def to_model(self, optimizer_value: float) -> float:
         """
         Converts an optimizer value into a model value.
+
         :param optimizer_value: A given optimizer value.
         :return: The converted value for the model.
         """
@@ -45,6 +46,7 @@ class ValueTranslator:
     def to_optimizer(self, model_value: float) -> float:
         """
         Converts a model value into an optimizer value.
+
         :param model_value: A given model value.
         :return: The converted value for the optimizer.
         """
@@ -60,6 +62,7 @@ def get_translator(translators: List[ValueTranslator],
                    key: str) -> ValueTranslator:
     """
     Finds and returns a translator with a given key from a list.
+
     :param translators: A list of translators to search.
     :param key: A translator key.
     :return: A translator, or raises a KeyError if none is found.
@@ -82,16 +85,17 @@ class ArrayTranslator:
         """
         Interpretation order is 'global', 'noise', 'synapse', and 'neuron'.
         With 'neuron' being looped for how ever many neurons there are.
+
         :param graph: The graph used for the neural circuit optimization.
         :param translators: A list of translators with keys associated with
-        all parameters that will be optimized.
+            all parameters that will be optimized.
         :param global_keys: A set of global keys.
         :param noise_keys: A set of keys associated with NEST noise models.
         :param synapse_keys: A set of keys associated with NEST synapse models.
         :param neuron_keys: A set of keys associated with NEST neuron models.
         :param nodes: A list of training node IDs from the graph (default: None).
-        If set, this list will be used instead of all nodes for generating the
-        parameters. Use when only a subset of the graphs neurons will be trained.
+            If set, this list will be used instead of all nodes for generating the
+            parameters. Use when only a subset of the graphs neurons will be trained.
         """
         if nodes is not None:
             self._nodes = nodes
@@ -142,7 +146,7 @@ class ArrayTranslator:
     def neuron_parameters(self) -> Dict[int, Dict[str, Any]]:
         """
         :return: A dictionary keyed by neuron id and valued by model parameters
-        for neuron models.
+            for neuron models.
         """
         return self._neuron_parameters
 
@@ -150,7 +154,7 @@ class ArrayTranslator:
     def noise_parameters(self) -> Dict[str, Any]:
         """
         :return: A dictionary keyed by NEST model parameter name and valued by
-        the corresponding value.
+            the corresponding value.
         """
         return self._noise_parameters
 
@@ -164,13 +168,14 @@ class ArrayTranslator:
     def required_array_size(self) -> int:
         """
         :return: Size of the optimizer array required in order to satisfy the
-        parameter conversion to models.
+            parameter conversion to models.
         """
         return self._array_size
 
     def from_optimizer(self, array: np.ndarray):
         """
         Set model parameters in-place when given an optimization array.
+
         :param array: An array whose elements can be consumed by ValueTranslators.
         :return: None
         """
@@ -200,7 +205,7 @@ class ArrayTranslator:
     def to_optimizer(self) -> np.ndarray:
         """
         :return: An array consumable by an optimizer. Should not be run unless
-        from_optimizer has initialized the internal model parameters.
+            from_optimizer has initialized the internal model parameters.
         """
         opt_array = np.zeros(self._array_size)
         for i, key in enumerate(self._key_order):

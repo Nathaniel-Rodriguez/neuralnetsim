@@ -8,6 +8,7 @@ from typing import Tuple
 def ecdf(data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the empirical CDF of a given set of data.
+
     :param data: A 1D array of values.
     :return: Tuple of (sorted data, cdf)
     """
@@ -28,6 +29,7 @@ def ecdf(data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 def eccdf(data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the complementary CDF.
+
     :param data: A 1D array of values.
     :return: Tuple of (sorted data, CCDF)
     """

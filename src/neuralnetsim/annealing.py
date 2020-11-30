@@ -24,6 +24,7 @@ def edge_swap(matrix: np.ndarray,
               destination_exists: bool) -> np.ndarray:
     """
     Swaps an edge in an adjacency matrix.
+
     :param matrix: The matrix for the swap, a 2-d numpy array.
     :param edges: A list of edges.
     :param source_index: Index of source edge in edges list.
@@ -59,11 +60,11 @@ class NetworkAnnealer:
         """
         :param num_steps: The number of steps for the annealing process.
         :param num_scramble_steps: The number of steps that will be spent
-        scrambling the network before annealing begins.
+            scrambling the network before annealing begins.
         :param cooling_schedule: A cooling schedule for the annealing process.
-        The cooling schedule only activates following the scrambling period.
+            The cooling schedule only activates following the scrambling period.
         :param energy_function: An energy function that can be evaluated
-        when provided an adjacency matrix of the current network.
+            when provided an adjacency matrix of the current network.
         :param seed: A seed for random number generation.
         """
         if seed is None:
@@ -84,6 +85,7 @@ class NetworkAnnealer:
                   edges: List[Tuple[int, int]]) -> SwapResult:
         """
         Applies a perturbation for the annealing algorithm.
+
         :param num_edges: The number of edges in the network.
         :param num_nodes: The number of nodes in the network.
         :param adj_mat: The adjacency matrix of the network.
@@ -116,10 +118,11 @@ class NetworkAnnealer:
         Applies the annealing process to the perturbed network. Accepts
         when energy is lowered or for a given probability that is temperature
         dependent. Steps the cooling algorithm.
+
         :param adj_mat: The adjacency matrix of the network.
         :param edges: The edge list of the network.
         :param energy: The energy calculated for the perturbation applied by the
-        scramble method.
+            scramble method.
         :param source_index: Index of source edge in edges list.
         :param source_edge: Source edge used for the perturbation.
         :param destination_edge: Destination edge used for the perturbation.
@@ -142,6 +145,7 @@ class NetworkAnnealer:
     def fit(self, graph: nx.DiGraph):
         """
         Applies the annealing algorithm to a given network.
+
         :param graph: The network to apply annealing too.
         :return: self
         """
@@ -167,6 +171,7 @@ class NetworkAnnealer:
         """
         Generates a new graph resulting from the annealing process.
         This graph will share all node attributes and ids as the original graph.
+
         :return: A result graph.
         """
         result_graph = nx.from_numpy_array(self._adj_mat, create_using=nx.DiGraph)
@@ -188,6 +193,7 @@ class NetworkAnnealer:
         Applies the annealing process and then generates a new graph resulting
         from the annealing process. This graph will share all node attributes
         and ids as the original graph.
+
         :return: A result graph.
         """
         return self.fit(graph).predict()

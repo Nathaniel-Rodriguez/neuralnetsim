@@ -17,6 +17,7 @@ def get_network(weight_matrix: np.ndarray,
                 **kwargs) -> nx.DiGraph:
     """
     Creates a networkx graph from loaded data.
+
     :param weight_matrix: A matrix of weights.
     :param link_matrix: A matrix of significant links.
     :return: A directed networkx graph.
@@ -32,6 +33,7 @@ def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0,
                            **kwargs) -> nx.DiGraph:
     """
     Applies a threshold to the graph based on the "weight" edge attribute.
+
     :param graph: A networkx DiGraph.
     :param threshold: A weight threshold (default: 0.0)
     :param largest_component: Return only the largest connected component.
@@ -52,6 +54,7 @@ def apply_weight_threshold(graph: nx.DiGraph, threshold=0.0,
 def convert_scale(graph: nx.DiGraph) -> nx.DiGraph:
     """
     Generate a new graph with weights in log scale.
+
     :param graph: Graph to convert edge weights from.
     :return: New graph with all edge weights converted to log scale.
     """
@@ -70,9 +73,10 @@ def get_first_loss_graph(graph: nx.DiGraph) -> nx.DiGraph:
     Generate a new graph that removes links in order from low weight to high
     while retaining the size of the largest connected component. Requires a
     graph with a "weight" edge attribute.
+
     :param graph: A graph to apply the dynamic thresholding too.
     :return: A new graph with all low-weight edges removed while retaining
-    node connectivity.
+        node connectivity.
     """
     test_graph = graph.copy()
     sorted_edges = sorted([(edge, weight)
@@ -103,14 +107,15 @@ def add_communities(graph: nx.DiGraph,
     for first depth level modules and "level2" for second depth level modules.
     Note: Only adds communities to nodes present in the graph.
     Note: Insensitive to node ID starting value or contiguity.
+
     :param graph: A weighted-directed networkx graph.
     :param seed: A seed for Infomap (default: None).
     :param infomap_commands: Optional command arguments for Infomap (default:
         ["-N 10", "--two-level", "--directed", "--silent"]).
     :param at_first_loss: Add communities based on dynamic thresholding that
-    removes all weights up to the first one that breaks the connected component.
+        removes all weights up to the first one that breaks the connected component.
     :param rescale: Converts weights to rescaled version before running
-    community detection.
+        community detection.
     :return: Updates graph in-place with community assignments, returns the
              provided graph.
     """
@@ -153,6 +158,7 @@ def add_positions(graph: nx.DiGraph, xpos: np.ndarray,
     """
     Adds "pos" attributes to nodes from a position array.
     Note: Only adds positions to the nodes present in the graph.
+
     :param graph: A networkx graph to add position attributes too.
     :param xpos: A numpy array with x positions.
     :param ypos: A numpy array with y positions.
@@ -181,6 +187,7 @@ def build_graph_from_data(data_dir: Path,
     data. Includes node attributes of "level1" and "level2" for communities
     and "pos" for x,y coordinates. Includes edge attributes of "weight" for
     link weights.
+
     :param data_dir: Location of the data files.
     :param link_filename: Name of the file containing binary link matrix.
     :param weight_filename: Name of the file containing TE weights.

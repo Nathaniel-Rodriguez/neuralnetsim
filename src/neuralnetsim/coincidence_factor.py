@@ -13,10 +13,11 @@ def coincidence_detector(model_spike_times: np.ndarray,
     """
     Detects the number of spikes in a model time series that occur within a
     given window of spikes in the data time series.
+
     :param model_spike_times: A 1-D array of spike times.
     :param data_spike_times: A 1-D array of spike times.
     :param coincidence_window: How close a spike has to be in time to be
-    considered coincident.
+        considered coincident.
     :return: Number of coincident spikes.
     """
     coincidence_count = 0
@@ -55,11 +56,12 @@ def coincidence_factor(model_spike_times: List[np.ndarray],
     """
     Calculates the coincidence factor as described in "Predicting neuronal
     activity with simple models of the threshold type".
+
     :param model_spike_times: A sequence of 1-D arrays with model spike times.
     :param data_spike_times: A 1-D array of data spike times.
     :param time_window: The time window of the experiment.
     :param coincidence_window: How close in time two spikes have to be in order
-    to be considered coincident.
+        to be considered coincident.
     :return: The coincidence factor
     """
     model_num_spikes = np.mean([len(spikes) for spikes in model_spike_times])

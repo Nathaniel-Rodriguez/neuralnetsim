@@ -9,6 +9,7 @@ import networkx as nx
 def create_bridge_mask(graph: nx.DiGraph, key: str) -> np.ndarray:
     """
     Creates a numpy mask which is true for connections that are bridges.
+
     :param graph: A networkx graph.
     :param key: A key specifying the community node attribute.
     :return: A numpy bool array of size NxN, where N is the number of nodes in
@@ -32,6 +33,7 @@ def create_log_matrix(adj_matrix: np.ndarray, out: np.ndarray = None) -> np.ndar
     Creates a an adjacency matrix with log applied element-wise.
     Zero entries are excluded. Does not raise exceptions for negative entries.
     Check for NaN in these cases.
+
     :param adj_matrix: An adjacency matrix.
     :param out: An optional output matrix (default: None).
     :return: The logged matrix. If out is not specified a copy is created.

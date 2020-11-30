@@ -24,9 +24,10 @@ def circuit_cost(x: np.ndarray,
     Calculates the cost for a given parameter array. Uses the coincidence
     factor to assess how well all model spikes matched against their respective
     real data counterparts.
+
     :param x: A 1-D array of the parameters.
     :param circuit_parameters: A parameter object that contains all static and
-    trainable parameters. Trainable parameters will be set at runtime.
+        trainable parameters. Trainable parameters will be set at runtime.
     :param translator: Will convert the parameter array into model parameters.
     :param kernel_parameters: Parameters for the NEST kernel.
     :param data: A dictionary keyed by node Id and valued by spike times.
@@ -70,9 +71,10 @@ def training_cost(x: np.ndarray,
     factor to assess how well all model spikes matched against their respective
     real data counterparts. Uses a training manager to use subsets of the
     training data for batches for each epoch of the trainer.
+
     :param x: A 1-D array of the parameters.
     :param circuit_parameters: A parameter object that contains all static and
-    trainable parameters. Trainable parameters will be set at runtime.
+        trainable parameters. Trainable parameters will be set at runtime.
     :param translator: Will convert the parameter array into model parameters.
     :param kernel_parameters: Parameters for the NEST kernel.
     :param training_manager: A TrainingManager.

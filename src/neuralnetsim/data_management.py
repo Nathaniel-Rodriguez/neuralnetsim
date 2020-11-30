@@ -20,11 +20,11 @@ class DataManager:
                  start_buffer: float = 0.0):
         """
         :param data: A dictionary keyed by neuron id and valued by a 1-D numpy
-        array of spike-times.
+            array of spike-times.
         :param num_folds: The number of desired folds for model selection.
         :param test_ratio: The fraction of data to set aside for testing.
-        The validation ratio will be the same. All other data is left for
-        training.
+            The validation ratio will be the same. All other data is left for
+            training.
         :param start_buffer: Pad spike times by this amount at the start.
         """
         if num_folds < 1:
@@ -70,9 +70,10 @@ class DataManager:
     def get_training_fold(self, fold: int) -> Dict[int, np.ndarray]:
         """
         Retrieves the training data for a given nested cross-validation fold.
+
         :param fold: The fold to draw the data from (0, num_folds-1).
         :return: A dictionary keyed by neuron id and valued by the spike times
-        of that neuron.
+            of that neuron.
         """
         if fold > (self._num_folds - 1):
             raise ValueError("Invalid fold {0}. Folds range"
@@ -84,10 +85,11 @@ class DataManager:
     def get_validation_fold(self, fold: int) -> Dict[int, np.ndarray]:
         """
         Retrieves the validation data for a given nested cross-validation fold.
+
         :param fold: The fold to draw the data from (0, num_folds-1).
         :return: A dictionary keyed by neuron id and valued by the spike times
-        of that neuron. The spike time origin is shifted by the start-time of
-        the validation data.
+            of that neuron. The spike time origin is shifted by the start-time of
+            the validation data.
         """
         if fold > (self._num_folds - 1):
             raise ValueError("Invalid fold {0}. Folds range"
@@ -100,10 +102,11 @@ class DataManager:
     def get_test_fold(self, fold: int) -> Dict[int, np.ndarray]:
         """
         Retrieves the test data for a given nested cross-validation fold.
+
         :param fold: The fold to draw the data from (0, num_folds-1).
         :return: A dictionary keyed by neuron id and valued by the spike times
-        of that neuron. The spike time origin is shifted by the start-time of
-        the test data.
+            of that neuron. The spike time origin is shifted by the start-time of
+            the test data.
         """
         if fold > (self._num_folds - 1):
             raise ValueError("Invalid fold {0}. Folds range"
@@ -117,6 +120,7 @@ class DataManager:
         """
         Returns a suggested run duration for a given split of the data. This
         will be the maximum spike time for that split + a buffer.
+
         :param split_type: Choose: "training", "validation", or "test"
         :param fold: Which fold to get the duration for.
         :param buffer: A buffer past the last spike (in ms) [default: 0.0].
@@ -144,7 +148,7 @@ class TrainingManager:
                  start_buffer: float = 0.1):
         """
         :param data: Data from the data manager. Keyed by neuron id and
-        valued by the spike times.
+            valued by the spike times.
         :param duration: Full duration of data set as specified by DataManager.
         :param batch_size: Duration of a training batch in ms.
         :param start_buffer: Pad spike times by this amount at the start.
@@ -161,7 +165,7 @@ class TrainingManager:
     def get_training_data(self) -> Dict[int, np.ndarray]:
         """
         :return: A subset of the training data for a given epoch. Epochs are
-        incremented each time this method is called.
+            incremented each time this method is called.
         """
         # if the end of the data set is reached, start at the beginning
         if (self._epoch + 1) * self._batch_size > self._duration:

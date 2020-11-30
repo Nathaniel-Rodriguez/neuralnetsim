@@ -27,7 +27,7 @@ class ModularityEnergyFunction:
                  community_key: str):
         """
         :param graph: A networkx graph with a communities assigned to nodes.
-        Must have a "weight" attribute for edges.
+            Must have a "weight" attribute for edges.
         :param target_modularity: The desired modularity.
         :param community_key: The key for the community node attribute to use.
         """
@@ -40,8 +40,9 @@ class ModularityEnergyFunction:
         """
         Calculates the new energy given an adjacency matrix. Uses the square
         of the difference between the current and target modularity.
+
         :param matrix: The new graphs adjacency matrix. Nodes must correspond
-        to those of the original provided graph, edges can vary.
+            to those of the original provided graph, edges can vary.
         :return: The energy of the network.
         """
         modularity = np.sum(matrix[self._bridge_mask]) / self._total_edge_weight
@@ -57,8 +58,8 @@ class StrengthDistributionEnergyFunction:
     def __init__(self, graph: nx.DiGraph):
         """
         :param graph: The original graph that will be used as the basis for
-        assessing the target in-strength distribution and out-strength
-        distribution.
+            assessing the target in-strength distribution and out-strength
+            distribution.
         """
         self._target_in_strength_distribution = \
             np.sum(nx.to_numpy_array(graph), axis=0)
@@ -68,6 +69,7 @@ class StrengthDistributionEnergyFunction:
     def __call__(self, matrix: np.ndarray) -> float:
         """
         Evaluates the energy.
+
         :param matrix: An logged or non-logged adjacency matrix.
         :return: The energy of the matrix.
         """
@@ -91,6 +93,7 @@ class NeuronalStrengthDifferenceEnergyFunction:
     def __call__(self, matrix: np.ndarray) -> float:
         """
         Evaluates the energy.
+
         :param matrix: An logged or non-logged adjacency matrix.
         :return: The energy of the matrix.
         """
@@ -111,14 +114,14 @@ class NeuralEnergyFunction:
                  strength_difference_weight: float = 1.0):
         """
         :param graph: The original graph that the energy functions will be
-        applied too.
+            applied too.
         :param target_modularity: The target modularity.
         :param community_key: The graph node key for communities.
         :param modularity_weight: Scale factor for modularity energy.
         :param strength_dist_weight: Scale factor for strength distribution
-        energy.
+            energy.
         :param strength_difference_weight: Scale factor for in/out node strength
-        difference energy.
+            difference energy.
         """
         self.modularity_weight = modularity_weight
         self.strength_dist_weight = strength_dist_weight
@@ -131,6 +134,7 @@ class NeuralEnergyFunction:
     def __call__(self, matrix: np.ndarray) -> float:
         """
         Evaluates the energy.
+
         :param matrix: An adjacency matrix.
         :return: The energy of the network.
         """

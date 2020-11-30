@@ -36,23 +36,24 @@ class SubNetwork:
         presynaptic neighbors. Signals can be fed into these neighbors and
         will be propagated down to the model neuron. Which neuron to use must
         be specified by id from the provided graph.
+
         :param graph: The full directed graph. Must have a "weight" key for
-        the edge attributes.
+            the edge attributes.
         :param node_id: The target neuron to build the subnetwork around.
         :param neuron_parameters: A dictionary of parameters keyed by model
-        nest attributes and valued accordingly.
+            nest attributes and valued accordingly.
         :param synaptic_parameters: A dictionary of parameters keyed by
-        synapse model attributes and valued accordingly. If a non-default
-        model is desired, the "model" key must be specified in the dictionary.
+            synapse model attributes and valued accordingly. If a non-default
+            model is desired, the "model" key must be specified in the dictionary.
         :param noise_parameters: A dictionary of parameters keyed for the
-        nest noise_generator.
+            nest noise_generator.
         :param neuron_model: Specifies the nest neuron model.
         :param weight_scale: A scalar factor for adjusting the weights.
         :param inputs: Optionally set the inputs into the neural network. If set
-        should be a list of spike times for each presynaptic input into the
-        target neuron.
+            should be a list of spike times for each presynaptic input into the
+            target neuron.
         :param enable_input_detectors: If True spike detectors will be created
-        for input neurons and will log the simulated spikes (default: False)
+            for input neurons and will log the simulated spikes (default: False)
         """
         self._graph_node_id = node_id
         self._presynaptic_nodes = list(graph.predecessors(self._graph_node_id))
@@ -107,6 +108,7 @@ class SubNetwork:
     def _append_weights(self, synaptic_parameters: Dict, weight_scale: float):
         """
         Adds weights for the corresponding
+
         :param synaptic_parameters: A dictionary of synapse parameters.
         :param weight_scale: A scalar to adjust the weight's scale.
         :return: The dictionary with a "weight" key added.
@@ -121,6 +123,7 @@ class SubNetwork:
         match the presynaptic neuron order.
         Spike times should be adjusted such that the first spike occurs at
         the time origin (0.1 ms).
+
         :param input_list: A list of numpy arrays of spike times.
         :return: None
         """
@@ -180,7 +183,7 @@ class OptimizerNetwork:
                  spike_times: Dict[int, np.ndarray]):
         """
         :param circuit_parameters: A CircuitParameters object with parameters
-        defined for the model. Requires a 'weight_scale' global parameter.
+            defined for the model. Requires a 'weight_scale' global parameter.
         :param spike_times: Input spike times for the simulation.
         """
         self._circuit_parameters = circuit_parameters
@@ -202,6 +205,7 @@ class OptimizerNetwork:
     def run(self, duration: float):
         """
         Prompts the NEST kernel to run the simulation.
+
         :param duration: How long to run the simulation in ms.
         """
         nest.Simulate(duration)
@@ -209,7 +213,7 @@ class OptimizerNetwork:
     def get_spike_trains(self) -> Dict[int, np.ndarray]:
         """
         :return: Spike train results from the simulation keyed by neuron id and
-        valued by a 1-D numpy array of spike times.
+            valued by a 1-D numpy array of spike times.
         """
         return {subnet.neuron_id: subnet.get_spike_output()
                 for subnet in self._subnets}
@@ -243,3 +247,7 @@ class TrialManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         nest.ResetKernel()
+
+
+if __name__ == "__main__":
+    pass

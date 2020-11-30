@@ -16,6 +16,7 @@ def load_as_matrix(file_path: Path, key: str) -> np.ndarray:
     Popular keys include 'data' for spike-trains, 'weights' for TE matrix,
     'pdf' for binary significance matrix, 'x' for x-positions, 'y' for
     y-positions.
+
     :param file_path: Path to a file containing a matrix.
     :param key: Key for the matrix.
     :return: A an array of the data.
@@ -32,6 +33,7 @@ def load_as_matrix(file_path: Path, key: str) -> np.ndarray:
 def load_spike_times(file_path: Path) -> List[np.ndarray]:
     """
     Loads spike time data from a matlab file.
+
     :param file_path: Path to a file containing spike time data.
     :return: A list of 1-D numpy arrays with spike times.
     """
@@ -46,18 +48,17 @@ def save(data: Any, filename: Path, protocol=pickle.DEFAULT_PROTOCOL):
     :param protocol: Pickle protocol (default: python default).
     :return: None
     """
-    pickled_obj_file = open(filename, 'wb')
-    pickle.dump(data, pickled_obj_file, protocol=protocol)
-    pickled_obj_file.close()
+    with open(filename, 'wb') as pickled_obj_file:
+        pickle.dump(data, pickled_obj_file, protocol=protocol)
 
 
 def load(filename: Path) -> Any:
     """
     Loads a pickled python object from file.
+
     :param filename: Save file path.
     :return: The loaded object.
     """
-    pickled_obj_file = open(filename, 'rb')
-    obj = pickle.load(pickled_obj_file)
-    pickled_obj_file.close()
+    with open(filename, 'rb') as pickled_obj_file:
+        obj = pickle.load(pickled_obj_file)
     return obj

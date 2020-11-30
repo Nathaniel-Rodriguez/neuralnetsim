@@ -13,6 +13,7 @@ class CoolingSchedule(ABC):
     def step(self, energy: float) -> float:
         """
         Increments the cooling schedule.
+
         :param energy: The current energy of the system.
         :return: The new temperature.
         """
@@ -39,7 +40,7 @@ class ExponentialCoolingSchedule(CoolingSchedule):
         """
         :param t0: Initial temperature.
         :param cooling_factor: Cooling factor for simulated annealing. Must be
-        bound between [0,1]. A factor of 1.0 means no annealing takes place.
+            bound between [0,1]. A factor of 1.0 means no annealing takes place.
         :param start: The annealing step at which to begin cooling.
         :param stop: The annealing step at which to halt cooling.
         """
@@ -56,6 +57,7 @@ class ExponentialCoolingSchedule(CoolingSchedule):
     def step(self, energy: None = float) -> float:
         """
         Increments the cooling schedule.
+
         :param energy: Unused for this scheduler.
         :return: The new temperature for this step.
         """
@@ -100,18 +102,18 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         """
         :param t0: initial temperature
         :param cooling_factor: determines how quickly the cooling rate can
-        change. A high value means fast change, while a low value means
-        changes will be slow. Value is bound between [0,inf].
+            change. A high value means fast change, while a low value means
+            changes will be slow. Value is bound between [0,inf].
         :param max_estimate_window: the maximum allowed history to record.
         :param decay_factor: how strongly to penalize energy contributions from
-        temperatures different from the current temperature when estimating
-        the heat capacity. Larger values (>1) more strongly weigh distant
-        temperatures, while smaller values (<1) more strongly weigh
-        current temperatures.
+            temperatures different from the current temperature when estimating
+            the heat capacity. Larger values (>1) more strongly weigh distant
+            temperatures, while smaller values (<1) more strongly weigh
+            current temperatures.
         :param hold_window: how many initial steps to wait before updating the
-        temperature. Since one sample is gained each step, this equates to the
-        number of samples that will be used to generate the first heat
-        capacity estimate.
+            temperature. Since one sample is gained each step, this equates to the
+            number of samples that will be used to generate the first heat
+            capacity estimate.
         :param start: The annealing step at which to begin cooling.
         :param stop: The annealing step at which to halt cooling.
         :param tmin: the minimum allowed temperature. Default 0.0

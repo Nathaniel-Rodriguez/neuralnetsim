@@ -24,17 +24,17 @@ class CircuitParameters:
         :param graph: Network associated with the parameterization.
         :param neuron_model: A NEST neuron model.
         :param static_neuron_parameters: Any neuron parameters that will be
-        set across all neurons and not be subject to optimization.
+            set across all neurons and not be subject to optimization.
         :param static_synaptic_parameters: Any synaptic parameters that will be
-        set across all synapses and not be subject to optimization (ignore
-        weights which are handled automatically by the neural circuits).
+            set across all synapses and not be subject to optimization (ignore
+            weights which are handled automatically by the neural circuits).
         :param static_noise_parameters: Any noise parameters that will be
-        set across all noise generators and not be subject to optimization.
+            set across all noise generators and not be subject to optimization.
         :param static_global_parameters: Any global parameters that are not
-        subject to optimization.
+            subject to optimization.
         :param nodes: A list of training node IDs from the graph (default: None).
-        If set, this list will be used instead of all nodes for generating the
-        parameters. Use when only a subset of the graphs neurons will be trained.
+            If set, this list will be used instead of all nodes for generating the
+            parameters. Use when only a subset of the graphs neurons will be trained.
         """
         if nodes is not None:
             self._nodes = nodes
@@ -77,6 +77,6 @@ class CircuitParameters:
     def training_nodes(self) -> List[int]:
         """
         :return: A list of node IDs for the neurons in the graph that will be
-        trained.
+            trained.
         """
         return self._nodes
