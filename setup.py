@@ -21,7 +21,7 @@ setup(name='neuralnetsim',
           'matplotlib>=3.3.2',
           'statsmodels>=0.12.0',
           'seaborn>=0.11.0',
-          'nest-simulator>=2.20.0',
+          'PyNEST',
           'dask>=2.30.0',
           'distributed>=2.30.0',
           'pandas>=1.1.3'
