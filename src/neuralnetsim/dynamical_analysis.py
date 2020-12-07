@@ -1,12 +1,42 @@
 __all__ = ["bin_spikes",
            "activity",
-           "normalized_activity",
-           "detect_avalanches"]
+           "detect_avalanches",
+           "isi_distribution_by_neuron",
+           "mean_isi"]
 
 
 import numpy as np
 from typing import Dict
 from typing import Tuple
+
+
+def isi_distribution_by_neuron(spike_data: Dict[int, np.ndarray]) -> Dict[int, np.ndarray]:
+    """
+    Returns the inter-spike-interval distribution for each neuron. If there are
+    not enough spikes for a given neuron then an empty numpy array is returned
+    for that neuron.
+
+    :param spike_data: A dictionary keyed by neuron ID and valued by a numpy
+        array of spike times.
+    :return: A dictionary keyed by neuron ID and valued by a numpy array of
+        inter-spike-intervals.
+    """
+    return {
+        neuron: spikes[1:] - spikes[:-1] if len(spikes) > 1 else np.zeros(0)
+        for neuron, spikes in spike_data.items()
+    }
+
+
+def mean_isi(isi_distribution: Dict[int, np.ndarray]) -> float:
+    """
+    Calculates the mean inter-spike-interval for a given ISI distribution.
+
+    :param isi_distribution: A dictionary keyed by neuron ID and valued by a
+        numpy array of inter-spike-intervals.
+    :return: The mean ISI.
+    """
+    return np.mean(np.concatenate(
+        list(dist for dist in isi_distribution.values())))
 
 
 def bin_spikes(spike_data: Dict[int, np.ndarray],
@@ -53,25 +83,14 @@ def activity(binned_spikes: np.ndarray,
                        mode='valid')
 
 
-def normalized_activity(circuit_activity: np.ndarray,
-                        num_neurons: int,
-                        resolution: float) -> np.ndarray:
-    """
-    Normalizes the circuit activity between 0 and 1.
-
-    :param circuit_activity: The neural network activity
-    :param num_neurons: The number of neurons used to calculate the activity.
-    :param resolution: The size of the bins in time.
-    :return: Array of normalized activity.
-    """
-    return circuit_activity / num_neurons / resolution
-
-
 def detect_avalanches(spike_data: Dict[int, np.ndarray],
                       activity_threshold: float) -> Tuple[int, int]:
-    # maybe take a different approach than activity, which seems resolution dep
-    # just needs start and end times of transition
-    # then participation and fire counts within that time window can be
-    # aggregated. So just need a transition detection algorithm that doesnt
-    # require a time resolution or threshold
+    # calculate mean isi
+    # choose bin size to match mean isi
+    # subtract minimum network activity across whole window (to get rid of const
+    # firing neurons) Choose large rolling window size for this
+    # When any activity is found, avalanche start and add flag
+    # when activity halts, avalanche stop and flip flag
+    # choose threshold and only take avalanche size to be that integrated above
+    # the threshold
     pass

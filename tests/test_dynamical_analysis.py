@@ -4,6 +4,27 @@ import numpy as np
 
 
 class TestDynamicalAnalysis(unittest.TestCase):
+    def test_isi_distribution_by_neuron(self):
+        spike_data = {1: np.array([0.0, 1.0, 1.2, 3.0, 5.0]),
+                      4: np.array([0.1, 1.2, 3.4, 5.5])}
+        dist = neuralnetsim.isi_distribution_by_neuron(spike_data)
+        self.assertAlmostEqual(dist[1][0], 1.0)
+        self.assertAlmostEqual(dist[1][1], 0.2)
+        self.assertAlmostEqual(dist[1][2], 1.8)
+        self.assertAlmostEqual(dist[1][3], 2.0)
+        self.assertAlmostEqual(dist[4][0], 1.1)
+        self.assertAlmostEqual(dist[4][1], 2.2)
+        self.assertAlmostEqual(dist[4][2], 2.1)
+
+    def test_mean_isi(self):
+        spike_data = {1: np.array([0.0, 1.0, 2.0, 3.0, 4.0]),
+                      4: np.array([0.1])}
+        mean = neuralnetsim.mean_isi(
+            neuralnetsim.isi_distribution_by_neuron(
+                spike_data
+            ))
+        self.assertAlmostEqual(mean, 1.0)
+
     def test_bin_spikes(self):
         spike_data = {1: np.array([0.0, 1.0, 1.2, 3.0, 5.0]),
                       4: np.array([0.1, 1.2, 3.4, 5.5])}
@@ -34,17 +55,6 @@ class TestDynamicalAnalysis(unittest.TestCase):
         self.assertEqual(binned_spikes[1], 0)
         self.assertEqual(binned_spikes[2], 0)
         self.assertEqual(binned_spikes[3], 0)
-
-    def test_normalized_activity(self):
-        spike_data = {1: np.array([0.0, 1.0, 1.2, 3.0, 5.0]),
-                      4: np.array([0.1, 1.2, 3.4, 5.5])}
-        binned_spikes, bins = neuralnetsim.bin_spikes(spike_data, 0.0, 5.0, 1)
-        norm_act = neuralnetsim.normalized_activity(
-            binned_spikes,
-            2,
-            1
-        )
-        print(norm_act)
 
     def test_detect_avalanches(self):
         pass
