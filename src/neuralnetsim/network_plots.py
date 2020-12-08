@@ -1,4 +1,5 @@
 __all__ = ["plot_slice",
+           "plot_ccdf",
            "plot_ccdf_distributions",
            "plot_graph_strength_distributions",
            "plot_graph_nodal_strength_differences",
@@ -93,6 +94,32 @@ def plot_slice(graph: nx.DiGraph,
     ax = plt.gca()
     ax.set_axis_off()
     plt.savefig(save_dir.joinpath(prefix + "_slice.pdf"))
+    plt.close()
+    plt.clf()
+
+
+def plot_ccdf(
+        distribution: np.ndarray,
+        xlabel: str = "",
+        ylabel: str = "",
+        xscale: str = "linear",
+        yscale: str = "linear",
+        save_dir: Path = None,
+        prefix: str = ""):
+    if save_dir is None:
+        save_dir = Path.cwd()
+
+    ecdf = ECDF(distribution)
+    x = np.sort(distribution)
+    y = 1.0 - ecdf(x)
+    plt.plot(x, y, c=seaborn.color_palette("tab10")[0], lw=2)
+    plt.xscale(xscale)
+    plt.yscale(yscale)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.tight_layout()
+    plt.savefig(save_dir.joinpath(
+        prefix + "_ccdf.png"), dpi=300)
     plt.close()
     plt.clf()
 

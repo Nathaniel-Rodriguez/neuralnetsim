@@ -1,9 +1,10 @@
 __all__ = ["bin_spikes",
            "activity",
            "detect_avalanches",
+           "network_isi_distribution",
            "isi_distribution_by_neuron",
            "mean_isi",
-           "avalanches_from_min_activity"]
+           "avalanches_from_median_activity"]
 
 
 import numpy as np
@@ -26,6 +27,20 @@ def isi_distribution_by_neuron(spike_data: Dict[int, np.ndarray]) -> Dict[int, n
         neuron: spikes[1:] - spikes[:-1] if len(spikes) > 1 else np.zeros(0)
         for neuron, spikes in spike_data.items()
     }
+
+
+def network_isi_distribution(spike_data: Dict[int, np.ndarray]) -> np.ndarray:
+    """
+    Calculates the ISI distribution of the network as a whole. This is the
+    interspike-interval between any spikes or any neurons in the network.
+
+    :param spike_data: A dictionary keyed by neuron ID and valued by a numpy
+        array of spike times.
+    :return: An array of the ISI distribution.
+    """
+    dist = np.concatenate(list(times for times in spike_data.values()))
+    dist.sort()
+    return dist[1:] - dist[:-1]
 
 
 def mean_isi(isi_distribution: Dict[int, np.ndarray]) -> float:
@@ -131,13 +146,13 @@ def detect_avalanches(binned_spikes: np.ndarray,
     return np.array(avalanche_times), np.array(avalanche_sizes)
 
 
-def avalanches_from_min_activity(
+def avalanches_from_median_activity(
         spike_data: Dict[int, np.ndarray],
         start_time: float,
         stop_time: float) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Calculates the avalanches based on the minimum level of network activity
-    based on binned total activity. Bin size is the mean ISI.
+    Calculates the avalanches based on the median level of network activity
+    based on binned total activity. Bin size is the mean network ISI.
 
     :param spike_data: A dictionary of the spike data for each neuron.
     :param start_time: The start time from which to begin the bins.
@@ -149,9 +164,9 @@ def avalanches_from_min_activity(
         above the baseline threshold integrated between the start and end times.
     """
     spikes, bins = bin_spikes(spike_data, start_time, stop_time,
-                              mean_isi(isi_distribution_by_neuron(spike_data)))
+                              np.mean(network_isi_distribution(spike_data)))
     return detect_avalanches(
         spikes,
         bins,
-        min(spikes)
+        np.median(spikes)
     )

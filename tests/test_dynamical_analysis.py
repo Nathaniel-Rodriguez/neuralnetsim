@@ -87,11 +87,3 @@ class TestDynamicalAnalysis(unittest.TestCase):
         self.assertAlmostEqual(av_times[0][0], 0.0)
         self.assertAlmostEqual(av_times[0][1], 1.0)
         self.assertAlmostEqual(av_sizes[0], 1.0)
-
-    def test_avalanches_from_min_activity(self):
-        spike_times = {1: np.array([0.1, 0.5, 1.2, 4.1, 5.1, 9.1, 10.1])}
-        av_durations, av_sizes = neuralnetsim.avalanches_from_min_activity(
-            spike_times, 0.0, 11.0
-        )
-        self.assertEqual(len(av_durations), 2)
-        self.assertEqual(len(av_sizes), 2)
