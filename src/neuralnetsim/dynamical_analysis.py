@@ -2,7 +2,8 @@ __all__ = ["bin_spikes",
            "activity",
            "detect_avalanches",
            "isi_distribution_by_neuron",
-           "mean_isi"]
+           "mean_isi",
+           "avalanches_from_min_activity"]
 
 
 import numpy as np
@@ -83,14 +84,74 @@ def activity(binned_spikes: np.ndarray,
                        mode='valid')
 
 
-def detect_avalanches(spike_data: Dict[int, np.ndarray],
-                      activity_threshold: float) -> Tuple[int, int]:
-    # calculate mean isi
-    # choose bin size to match mean isi
-    # subtract minimum network activity across whole window (to get rid of const
-    # firing neurons) Choose large rolling window size for this
-    # When any activity is found, avalanche start and add flag
-    # when activity halts, avalanche stop and flip flag
-    # choose threshold and only take avalanche size to be that integrated above
-    # the threshold
-    pass
+def detect_avalanches(binned_spikes: np.ndarray,
+                      bins: np.ndarray,
+                      activity_threshold: float) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Detects avalanches given spike data from the neural network. Cuts off the
+    last avalanche if it does not end before the last bin, since it is not
+    possible to determine its duration.
+
+    :param binned_spikes: The aggregated spiking data of the neural network.
+    :param bins: The time values associated with each bin.
+    :param activity_threshold: The activity level above which to consider an
+        avalanche to have begun or ended.
+    :return: A 2-D numpy array of size Kx2 where K is the number of avalanches.
+        The first dimension is the avalanche start time, and the second is the
+        avalanche end time. The second 1-D K size array gives the size of the
+        corresponding avalanches. The size is the total number of spikes
+        above the baseline threshold integrated between the start and end times.
+    """
+    bin_size = bins[1] - bins[0]
+    avalanche_mask = binned_spikes > activity_threshold
+    avalanche = False
+    avalanche_start = 0
+    avalanche_end = avalanche_start
+    avalanche_size = 0
+    avalanche_times = []
+    avalanche_sizes = []
+    for i in range(len(binned_spikes)):
+        if not avalanche:
+            if avalanche_mask[i]:
+                avalanche = True
+                avalanche_size = binned_spikes[i]
+                avalanche_start = bins[i]
+        else:
+            if avalanche_mask[i]:
+                avalanche_size += binned_spikes[i]
+            else:
+                avalanche_end = bins[i]
+                avalanche = False
+                avalanche_times.append((avalanche_start, avalanche_end))
+                avalanche_sizes.append(
+                    avalanche_size * bin_size
+                    - activity_threshold * (avalanche_end - avalanche_start))
+                avalanche_size = 0.0
+
+    return np.array(avalanche_times), np.array(avalanche_sizes)
+
+
+def avalanches_from_min_activity(
+        spike_data: Dict[int, np.ndarray],
+        start_time: float,
+        stop_time: float) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculates the avalanches based on the minimum level of network activity
+    based on binned total activity. Bin size is the mean ISI.
+
+    :param spike_data: A dictionary of the spike data for each neuron.
+    :param start_time: The start time from which to begin the bins.
+    :param stop_time: The end time of the bins.
+    :return: A 2-D numpy array of size Kx2 where K is the number of avalanches.
+        The first dimension is the avalanche start time, and the second is the
+        avalanche end time. The second 1-D K size array gives the size of the
+        corresponding avalanches. The size is the total number of spikes
+        above the baseline threshold integrated between the start and end times.
+    """
+    spikes, bins = bin_spikes(spike_data, start_time, stop_time,
+                              mean_isi(isi_distribution_by_neuron(spike_data)))
+    return detect_avalanches(
+        spikes,
+        bins,
+        min(spikes)
+    )

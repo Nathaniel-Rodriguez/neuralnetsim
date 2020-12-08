@@ -57,4 +57,41 @@ class TestDynamicalAnalysis(unittest.TestCase):
         self.assertEqual(binned_spikes[3], 0)
 
     def test_detect_avalanches(self):
-        pass
+        binned_activity = np.array([2.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+                                    0.0, 0.0, 0.0, 0.0, 1.0])
+        bins = np.linspace(0.0, 10.0, 11)
+        av_times, av_sizes = neuralnetsim.detect_avalanches(
+            binned_activity,
+            bins,
+            0.0
+        )
+        self.assertEqual(len(av_times), 2)
+        self.assertEqual(len(av_sizes), 2)
+        self.assertAlmostEqual(av_times[0][0], 0.0)
+        self.assertAlmostEqual(av_times[0][1], 2.0)
+        self.assertAlmostEqual(av_times[1][0], 4.0)
+        self.assertAlmostEqual(av_times[1][1], 5.0)
+        self.assertAlmostEqual(av_sizes[0], 3.0)
+        self.assertAlmostEqual(av_sizes[1], 1.0)
+
+        binned_activity = np.array([2.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+                                    0.0, 0.0, 0.0, 0.0, 1.0])
+        bins = np.linspace(0.0, 10.0, 11)
+        av_times, av_sizes = neuralnetsim.detect_avalanches(
+            binned_activity,
+            bins,
+            1.0
+        )
+        self.assertEqual(len(av_times), 1)
+        self.assertEqual(len(av_sizes), 1)
+        self.assertAlmostEqual(av_times[0][0], 0.0)
+        self.assertAlmostEqual(av_times[0][1], 1.0)
+        self.assertAlmostEqual(av_sizes[0], 1.0)
+
+    def test_avalanches_from_min_activity(self):
+        spike_times = {1: np.array([0.1, 0.5, 1.2, 4.1, 5.1, 9.1, 10.1])}
+        av_durations, av_sizes = neuralnetsim.avalanches_from_min_activity(
+            spike_times, 0.0, 11.0
+        )
+        self.assertEqual(len(av_durations), 2)
+        self.assertEqual(len(av_sizes), 2)

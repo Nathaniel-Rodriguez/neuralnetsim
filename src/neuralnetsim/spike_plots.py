@@ -59,5 +59,8 @@ def plot_spike_train(datasets: List[Dict[int, np.ndarray]],
     plt.clf()
 
 
+# make plot of spike trains with avalanches shown in low opacity bands
+
+
 if __name__ == "__main__":
     pass
