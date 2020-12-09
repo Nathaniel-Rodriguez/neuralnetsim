@@ -15,6 +15,7 @@ Submodules
 
    neuralnetsim.annealing
    neuralnetsim.cdf
+   neuralnetsim.circuit
    neuralnetsim.circuit_cost
    neuralnetsim.coincidence_factor
    neuralnetsim.cooling
