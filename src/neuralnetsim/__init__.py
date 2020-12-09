@@ -1,3 +1,4 @@
+from neuralnetsim.dynamical_analysis import *
 from neuralnetsim.sliceops import *
 from neuralnetsim.data_loader import *
 from neuralnetsim.data_management import *
@@ -18,4 +19,3 @@ from neuralnetsim.coincidence_factor import *
 from neuralnetsim.network_fitting import *
 from neuralnetsim.circuit_cost import *
 from neuralnetsim.spike_plots import *
-from neuralnetsim.dynamical_analysis import *
