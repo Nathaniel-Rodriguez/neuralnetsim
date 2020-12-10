@@ -34,21 +34,14 @@ def plot_spike_train(datasets: List[Dict[int, np.ndarray]],
 
     unique_neurons = {key for dataset in datasets
                       for key in dataset.keys()}
-    print("Neurons to plot:", unique_neurons)
     count = counter()
     y_map = {neuron: count.__next__() for neuron in unique_neurons}
-    print("y_map", y_map)
-    y_map_inv = {loc: neuron for neuron, loc in y_map.items()}
     for i, dataset in enumerate(datasets):
         for neuron in dataset.keys():
             x = dataset[neuron][np.logical_and(dataset[neuron] >= start_time,
                                                dataset[neuron] <= stop_time)]
             y = [y_map[neuron]] * len(x)
-            # print("plotting...",  neuron, "with spikes", x, "at", y)
             plt.scatter(x, y, alpha=0.5, color=cm.Set1.colors[i])
-    # loc, labels = plt.yticks()
-
-    # plt.yticks(loc, [str(v) for v in y_map_inv.values()])
     plt.legend(handles=[
         mpatches.Patch(color=cm.Set1.colors[0], label='model'),
         mpatches.Patch(color=cm.Set1.colors[1], label='data')
