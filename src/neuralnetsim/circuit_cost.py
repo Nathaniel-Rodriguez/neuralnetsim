@@ -3,6 +3,7 @@ __all__ = ["circuit_cost",
            "avalanche_cost"]
 
 
+import math
 import numpy as np
 from neuralnetsim import ArrayTranslator
 from neuralnetsim import TrialManager
@@ -122,7 +123,8 @@ def avalanche_cost(
     Calculates the cost for a given parameter array. Uses the Wasserstein
     distance between model avalanche size distribution and data avalanche size
     distribution as a cost. Uses a training manager to use subsets of the
-    training data for batches for each epoch of the trainer.
+    training data for batches for each epoch of the trainer. Kernel seeder is
+    used to set new kernel seeds for each execution of the cost function.
 
     :param x: A 1-D array of the parameters.
     :param circuit_parameters: A parameter object that contains all static and
@@ -143,25 +145,29 @@ def avalanche_cost(
     circuit_parameters.extend_synaptic_parameters(translator.synapse_parameters)
     circuit_parameters.extend_noise_parameters(translator.noise_parameters)
     data = training_manager.get_training_data()
-    with CircuitManager(kernel_parameters, circuit_parameters, data) as circuit:
+    with CircuitManager(kernel_parameters, circuit_parameters) as circuit:
         try:
             circuit.run(training_manager.get_duration())
             model_spikes = circuit.get_spike_trains()
-            _, model_avalanche_sizes = avalanches_from_median_activity(
-                model_spikes,
-                0.0,
-                training_manager.get_duration()
-            )
-            _, data_avalanche_sizes = avalanches_from_median_activity(
-                data,
-                0.0,
-                training_manager.get_duration()
-            )
-            cost = wasserstein_distance(model_avalanche_sizes,
-                                        data_avalanche_sizes)
+            if not all(len(spikes) == 0 for spikes in model_spikes.values()):
+                _, model_avalanche_sizes = avalanches_from_median_activity(
+                    model_spikes,
+                    0.0,
+                    training_manager.get_duration()
+                )
+                _, data_avalanche_sizes = avalanches_from_median_activity(
+                    data,
+                    0.0,
+                    training_manager.get_duration()
+                )
+                d = wasserstein_distance(model_avalanche_sizes,
+                                         data_avalanche_sizes)
+                cost = -1 / math.log(d + 1)  # max cost is 0, min cost -inf
+            else:
+                cost = 0.0
 
         except Exception as err:  # nest just throws exceptions
             print(err)
-            cost = 9e9
+            cost = 0.0
 
     return cost
