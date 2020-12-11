@@ -165,7 +165,8 @@ class TrainingManager:
     def get_training_data(self) -> Dict[int, np.ndarray]:
         """
         :return: A subset of the training data for a given epoch. Epochs are
-            incremented each time this method is called.
+            incremented each time this method is called. Origin is shifted to the
+            new start time, so a start of 5000 is shifted to 0.
         """
         # if the end of the data set is reached, start at the beginning
         if (self._epoch + 1) * self._batch_size > self._duration:
@@ -176,5 +177,5 @@ class TrainingManager:
         end = self._epoch * self._batch_size
         return {neuron: spikes[np.logical_and(spikes >= start,
                                               spikes < end)]
-                + self._start_buffer
+                + self._start_buffer - start
                 for neuron, spikes in self._data.items()}
