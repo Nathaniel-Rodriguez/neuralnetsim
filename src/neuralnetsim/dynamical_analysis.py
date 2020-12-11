@@ -163,8 +163,11 @@ def avalanches_from_median_activity(
         corresponding avalanches. The size is the total number of spikes
         above the baseline threshold integrated between the start and end times.
     """
+    data_subset = {node: values[np.logical_and(values >= start_time,
+                                               values < stop_time)]
+                   for node, values in spike_data.items()}
     spikes, bins = bin_spikes(spike_data, start_time, stop_time,
-                              np.mean(network_isi_distribution(spike_data)))
+                              np.mean(network_isi_distribution(data_subset)))
     return detect_avalanches(
         spikes,
         bins,
