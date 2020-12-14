@@ -5,6 +5,7 @@ import networkx as nx
 from typing import Dict
 from typing import Any
 from typing import List
+from typing import Union
 
 
 class CircuitParameters:
@@ -19,7 +20,8 @@ class CircuitParameters:
                  static_synaptic_parameters: Dict[str, Any] = None,
                  static_noise_parameters: Dict[str, Any] = None,
                  static_global_parameters: Dict[str, Any] = None,
-                 nodes: List[int] = None):
+                 nodes: List[int] = None,
+                 homogeneous_neurons: bool = False):
         """
         :param graph: Network associated with the parameterization.
         :param neuron_model: A NEST neuron model.
@@ -35,6 +37,8 @@ class CircuitParameters:
         :param nodes: A list of training node IDs from the graph (default: None).
             If set, this list will be used instead of all nodes for generating the
             parameters. Use when only a subset of the graphs neurons will be trained.
+        :param homogeneous_neurons: Specify whether to share neuron parameters
+            among neurons (default = False).
         """
         if nodes is not None:
             self._nodes = nodes
@@ -42,9 +46,17 @@ class CircuitParameters:
             self._nodes = list(graph.nodes())
         self.network = graph
         self.neuron_model = neuron_model
-        self.neuron_parameters = {
-            neuron_id: {} if static_neuron_parameters is None else static_neuron_parameters
-            for neuron_id in self._nodes}
+        self._homogeneous_neurons = homogeneous_neurons
+        if not self._homogeneous_neurons:
+            self.neuron_parameters = {
+                neuron_id: {} if static_neuron_parameters is None
+                else static_neuron_parameters
+                for neuron_id in self._nodes}
+        else:
+            if static_neuron_parameters is None:
+                self.neuron_parameters = {}
+            else:
+                self.neuron_parameters = static_neuron_parameters
 
         if static_synaptic_parameters is None:
             self.synaptic_parameters = {}
@@ -70,9 +82,14 @@ class CircuitParameters:
     def extend_global_parameters(self, parameters: Dict[str, Any]):
         self.global_parameters.update(parameters)
 
-    def extend_neuron_parameters(self, parameters_by_node: Dict[int, Dict[str, Any]]):
-        for node in self.neuron_parameters.keys():
-            self.neuron_parameters[node].update(parameters_by_node[node])
+    def extend_neuron_parameters(
+            self,
+            parameters: Union[Dict[int, Dict[str, Any]], Dict[str, Any]]):
+        if not self._homogeneous_neurons:
+            for node in self.neuron_parameters.keys():
+                self.neuron_parameters[node].update(parameters[node])
+        else:
+            self.neuron_parameters.update(parameters)
 
     def training_nodes(self) -> List[int]:
         """
@@ -80,3 +97,9 @@ class CircuitParameters:
             trained.
         """
         return self._nodes
+
+    def is_homogeneous(self) -> bool:
+        """
+        :return: True if neurons share parameters, else False.
+        """
+        return self._homogeneous_neurons

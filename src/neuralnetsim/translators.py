@@ -9,6 +9,7 @@ from typing import List
 from typing import Dict
 from typing import Any
 from typing import Sequence
+from typing import Union
 
 
 class ValueTranslator:
@@ -22,7 +23,7 @@ class ValueTranslator:
     to_optimizer methods translate a given value for the model or for the
     optimizer.
     """
-    def __init__(self, key: str, vmin: float, vmax: float):
+    def __init__(self, key: str, vmin: float, vmax: float, log_scale=False):
         """
         :param key: A string specifying the kind of parameter this translator
             is responsible for.
@@ -30,8 +31,13 @@ class ValueTranslator:
         :param vmax: The maximum allowed model value for this parameter.
         """
         self.key = key
-        self._min = vmin
-        self._max = vmax
+        self._logged = log_scale
+        if self._logged:
+            self._min = math.log(vmin)
+            self._max = math.log(vmax)
+        else:
+            self._min = vmin
+            self._max = vmax
 
     def to_model(self, optimizer_value: float) -> float:
         """
@@ -40,8 +46,12 @@ class ValueTranslator:
         :param optimizer_value: A given optimizer value.
         :return: The converted value for the model.
         """
-        return ((-math.fabs(optimizer_value % 2 - 1) + 1)
-                * (self._max - self._min)) + self._min
+        value = ((-math.fabs(optimizer_value % 2 - 1) + 1)
+                 * (self._max - self._min)) + self._min
+        if self._logged:
+            return math.exp(value)
+        else:
+            return value
 
     def to_optimizer(self, model_value: float) -> float:
         """
@@ -50,7 +60,10 @@ class ValueTranslator:
         :param model_value: A given model value.
         :return: The converted value for the optimizer.
         """
-        return (model_value - self._min) / (self._max - self._min)
+        if self._logged:
+            return (math.log(model_value) - self._min) / (self._max - self._min)
+        else:
+            return (model_value - self._min) / (self._max - self._min)
 
     def __eq__(self, other):
         return self.key == other.key\
@@ -81,7 +94,7 @@ class ArrayTranslator:
     def __init__(self, graph: nx.DiGraph, translators: List[ValueTranslator],
                  global_keys: Sequence[str], noise_keys: Sequence[str],
                  synapse_keys: Sequence[str], neuron_keys: Sequence[str],
-                 nodes: List[int] = None):
+                 nodes: List[int] = None, homogeneous_neurons: bool = False):
         """
         Interpretation order is 'global', 'noise', 'synapse', and 'neuron'.
         With 'neuron' being looped for how ever many neurons there are.
@@ -96,12 +109,15 @@ class ArrayTranslator:
         :param nodes: A list of training node IDs from the graph (default: None).
             If set, this list will be used instead of all nodes for generating the
             parameters. Use when only a subset of the graphs neurons will be trained.
+        :param homogeneous_neurons: Specify whether to share neuron parameters
+            among neurons (default = False).
         """
         if nodes is not None:
             self._nodes = nodes
         else:
             self._nodes = list(graph.nodes())
         self._translators = translators
+        self._homogeneous_neurons = homogeneous_neurons
         self._global_keys = list(global_keys)
         self._noise_keys = list(noise_keys)
         self._synapse_keys = list(synapse_keys)
@@ -110,14 +126,23 @@ class ArrayTranslator:
         self._global_parameters = {}
         self._noise_parameters = {}
         self._synapse_parameters = {}
-        self._neuron_parameters = {neuron_id: {} for neuron_id in self._nodes}
+        if self._homogeneous_neurons:
+            self._neuron_parameters = {}
+        else:
+            self._neuron_parameters = {neuron_id: {} for neuron_id in self._nodes}
 
-        self._key_order = self._global_keys\
-                          + self._noise_keys\
-                          + self._synapse_keys\
-                          + [key
-                             for _ in range(len(self._nodes))
-                             for key in self._neuron_keys]
+        if self._homogeneous_neurons:
+            self._key_order = self._global_keys\
+                              + self._noise_keys\
+                              + self._synapse_keys\
+                              + self._neuron_keys
+        else:
+            self._key_order = self._global_keys\
+                              + self._noise_keys\
+                              + self._synapse_keys\
+                              + [key
+                                 for _ in range(len(self._nodes))
+                                 for key in self._neuron_keys]
         self._array_size = len(self._key_order)
         self._model_parameters = np.zeros(self._array_size)
 
@@ -130,9 +155,12 @@ class ArrayTranslator:
         s += "="*7 + "Synapse" + "="*7 + "\n"
         s += str(self._synapse_parameters) + "\n"
         s += "="*7 + "Neurons" + "="*7 + "\n"
-        for neuron_id, pars in self._neuron_parameters.items():
-            s += "\tNEURON = " + str(neuron_id) + "\n"
-            s += "\t" + str(pars) + "\n"
+        if self._homogeneous_neurons:
+            s += str(self._neuron_parameters) + "\n"
+        else:
+            for neuron_id, pars in self._neuron_parameters.items():
+                s += "\tNEURON = " + str(neuron_id) + "\n"
+                s += "\t" + str(pars) + "\n"
         return s
 
     @property
@@ -143,7 +171,7 @@ class ArrayTranslator:
         return self._synapse_parameters
 
     @property
-    def neuron_parameters(self) -> Dict[int, Dict[str, Any]]:
+    def neuron_parameters(self) -> Union[Dict[int, Dict[str, Any]], Dict[str, Any]]:
         """
         :return: A dictionary keyed by neuron id and valued by model parameters
             for neuron models.
@@ -197,10 +225,15 @@ class ArrayTranslator:
         for key in self._synapse_keys:
             self._synapse_parameters[key] = self._model_parameters[c]
             c += 1
-        for neuron_pars in self._neuron_parameters.values():
+        if self._homogeneous_neurons:
             for key in self._neuron_keys:
-                neuron_pars[key] = self._model_parameters[c]
+                self._neuron_parameters[key] = self._model_parameters[c]
                 c += 1
+        else:
+            for neuron_pars in self._neuron_parameters.values():
+                for key in self._neuron_keys:
+                    neuron_pars[key] = self._model_parameters[c]
+                    c += 1
 
     def to_optimizer(self) -> np.ndarray:
         """

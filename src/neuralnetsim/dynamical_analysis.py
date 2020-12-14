@@ -1,4 +1,5 @@
-__all__ = ["bin_spikes",
+__all__ = ["spike_count",
+           "bin_spikes",
            "activity",
            "detect_avalanches",
            "network_isi_distribution",
@@ -10,6 +11,20 @@ __all__ = ["bin_spikes",
 import numpy as np
 from typing import Dict
 from typing import Tuple
+
+
+def spike_count(data: Dict[int, np.ndarray]) -> int:
+    """
+    Count the number of total spikes emitted by the neural network in the data.
+
+    :param data: A dictionary keyed by neuron ID and valued by a numpy
+        array of spike times.
+    :return: The number of spikes.
+    """
+    num_spikes = 0
+    for arr in data.values():
+        num_spikes += len(arr)
+    return num_spikes
 
 
 def isi_distribution_by_neuron(spike_data: Dict[int, np.ndarray]) -> Dict[int, np.ndarray]:
@@ -163,13 +178,18 @@ def avalanches_from_median_activity(
         corresponding avalanches. The size is the total number of spikes
         above the baseline threshold integrated between the start and end times.
     """
-    data_subset = {node: values[np.logical_and(values >= start_time,
-                                               values < stop_time)]
-                   for node, values in spike_data.items()}
-    spikes, bins = bin_spikes(spike_data, start_time, stop_time,
-                              np.mean(network_isi_distribution(data_subset)))
+    resolution = np.mean(network_isi_distribution(
+        {node: values[np.logical_and(values >= start_time,
+                                     values < stop_time)]
+         for node, values in spike_data.items()}
+    ))
+    if np.isnan(resolution):
+        print(start_time, stop_time,
+              sum(len(s) for s in spike_data.values()), flush=True)
+        raise ValueError("NAN RESOLUTION: FAILED TO CALCULATE ISI")
+    spikes, bins = bin_spikes(spike_data, start_time, stop_time, resolution)
     return detect_avalanches(
         spikes,
         bins,
-        np.median(spikes)
+        0.0  # np.median(spikes)
     )

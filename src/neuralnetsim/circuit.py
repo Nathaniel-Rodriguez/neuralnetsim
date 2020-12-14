@@ -22,10 +22,16 @@ class NeuralCircuit:
         graph = self._circuit_parameters.network
 
         # create neurons
-        self._neurons = nest.Create(
-            self._circuit_parameters.neuron_model,
-            n=nx.number_of_nodes(graph),
-            params=list(self._circuit_parameters.neuron_parameters.values()))
+        if not self._circuit_parameters.is_homogeneous():
+            self._neurons = nest.Create(
+                self._circuit_parameters.neuron_model,
+                n=nx.number_of_nodes(graph),
+                params=list(self._circuit_parameters.neuron_parameters.values()))
+        else:
+            self._neurons = nest.Create(
+                self._circuit_parameters.neuron_model,
+                n=nx.number_of_nodes(graph),
+                params=self._circuit_parameters.neuron_parameters)
         self._neuron_to_nest = {neuron_id: self._neurons[i]
                                 for i, neuron_id in enumerate(graph.nodes())}
         self._nest_to_neuron = {self._neurons[i]: neuron_id

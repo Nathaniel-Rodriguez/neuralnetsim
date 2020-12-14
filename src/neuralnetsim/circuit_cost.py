@@ -5,6 +5,7 @@ __all__ = ["circuit_cost",
 
 import math
 import numpy as np
+import neuralnetsim
 from neuralnetsim import ArrayTranslator
 from neuralnetsim import TrialManager
 from neuralnetsim import CircuitParameters
@@ -117,7 +118,8 @@ def avalanche_cost(
         circuit_parameters: CircuitParameters,
         translator: ArrayTranslator,
         kernel_parameters: Dict,
-        training_manager: TrainingManager,
+        duration: float,
+        data_avalanche_sizes: np.ndarray,
         kernel_seeder: np.random.RandomState = None) -> float:
     """
     Calculates the cost for a given parameter array. Uses the Wasserstein
@@ -131,7 +133,8 @@ def avalanche_cost(
         trainable parameters. Trainable parameters will be set at runtime.
     :param translator: Will convert the parameter array into model parameters.
     :param kernel_parameters: Parameters for the NEST kernel.
-    :param training_manager: A TrainingManager.
+    :param duration: Duration of the run.
+    :param data_avalanche_sizes: The avalanche size distribution of the data.
     :param kernel_seeder: Optionally sets kernel seeds.
     :return: Wasserstein distance (cost) between model and data avalanche size
         distributions.
@@ -144,30 +147,33 @@ def avalanche_cost(
     circuit_parameters.extend_neuron_parameters(translator.neuron_parameters)
     circuit_parameters.extend_synaptic_parameters(translator.synapse_parameters)
     circuit_parameters.extend_noise_parameters(translator.noise_parameters)
-    data = training_manager.get_training_data()
     with CircuitManager(kernel_parameters, circuit_parameters) as circuit:
-        try:
-            circuit.run(training_manager.get_duration())
-            model_spikes = circuit.get_spike_trains()
-            if not all(len(spikes) == 0 for spikes in model_spikes.values()):
-                _, model_avalanche_sizes = avalanches_from_median_activity(
-                    model_spikes,
-                    0.0,
-                    training_manager.get_duration()
-                )
-                _, data_avalanche_sizes = avalanches_from_median_activity(
-                    data,
-                    0.0,
-                    training_manager.get_duration()
-                )
+        circuit.run(duration)
+        model_spikes = circuit.get_spike_trains()
+        num_spikes = neuralnetsim.spike_count(model_spikes)
+        # if too few spikes, then isi can't be calculated, if too many
+        # than too much memory is used.
+        if (num_spikes > 4) and (num_spikes < 5000000):
+            model_avalanche_sizes = avalanches_from_median_activity(
+                model_spikes,
+                0.0,
+                duration
+            )[1]
+            # _, data_avalanche_sizes = avalanches_from_median_activity(
+            #     data,
+            #     0.0,
+            #     training_manager.get_duration()
+            # )
+            if len(model_avalanche_sizes) > 0:
                 d = wasserstein_distance(model_avalanche_sizes,
                                          data_avalanche_sizes)
                 cost = -1 / math.log(d + 1)  # max cost is 0, min cost -inf
             else:
                 cost = 0.0
-
-        except Exception as err:  # nest just throws exceptions
-            print(err)
+        else:
             cost = 0.0
+        print("Num of spikes:",
+              str(int(num_spikes / 1000)) + "K",
+              "Cost", cost, flush=True)
 
     return cost
