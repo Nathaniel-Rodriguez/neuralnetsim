@@ -1,11 +1,17 @@
-__all__ = ["CircuitParameters"]
+__all__ = ["CircuitParameters",
+           "DistributionParameters"]
 
 
+import numpy as np
 import networkx as nx
+from neuralnetsim import get_translator
+from neuralnetsim import ValueTranslator
+from neuralnetsim import DistributionTranslator
 from typing import Dict
 from typing import Any
 from typing import List
 from typing import Union
+from typing import Sequence
 
 
 class CircuitParameters:
@@ -103,3 +109,133 @@ class CircuitParameters:
         :return: True if neurons share parameters, else False.
         """
         return self._homogeneous_neurons
+
+
+class DistributionParameters:
+    """"""
+    # return parameters for noise, synapse, global, and neuron
+    # needs to generate lists of synapse/neuron
+    # needs to take translators & dist translators (check whether to draw or not from translator based on type)
+    # needs to do to_opt and from_opt, required_array size
+    def __init__(
+            self,
+            graph: nx.DiGraph,
+            neuron_model: str,
+            translators: List[Union[ValueTranslator, DistributionTranslator]],
+            global_keys: Sequence[str],
+            noise_keys: Sequence[str],
+            synapse_keys: Sequence[str],
+            neuron_keys: Sequence[str],
+            static_neuron_parameters: Dict[str, Any] = None,
+            static_synaptic_parameters: Dict[str, Any] = None,
+            static_noise_parameters: Dict[str, Any] = None,
+            static_global_parameters: Dict[str, Any] = None,
+    ):
+        self.network = graph
+        self.neuron_model = neuron_model
+        self._translators = translators
+        self._global_keys = list(global_keys)
+        self._noise_keys = list(noise_keys)
+        self._synapse_keys = list(synapse_keys)
+        self._neuron_keys = list(neuron_keys)
+        self._key_order = self._global_keys \
+                          + self._noise_keys \
+                          + self._synapse_keys \
+                          + self._neuron_keys
+
+        self._array_size = 0
+        for key in self._key_order:
+            translator = get_translator(self._translators, key)
+            self._array_size += translator.num_parameters()
+
+        if static_neuron_parameters is None:
+            self.neuron_parameters = {}
+        else:
+            self.neuron_parameters = static_neuron_parameters
+        if static_synaptic_parameters is None:
+            self.synaptic_parameters = {}
+        else:
+            self.synaptic_parameters = static_synaptic_parameters
+        if static_noise_parameters is None:
+            self.noise_parameters = {}
+        else:
+            self.noise_parameters = static_noise_parameters
+        if static_global_parameters is None:
+            self.global_parameters = {}
+        else:
+            self.global_parameters = static_global_parameters
+        self._opt_parameters = np.zeros(self._array_size)
+        self._dist_args = {}
+        self._key_map = {key: self.neuron_parameters for key in self._neuron_keys}
+        self._key_map.update({key: self.global_parameters for key in self._global_keys})
+        self._key_map.update({key: self.synaptic_parameters for key in self._synapse_keys})
+        self._key_map.update({key: self.noise_parameters for key in self._noise_keys})
+
+    def generate_neuron_parameters(self, num_neurons: int,
+                                   rng: np.random.RandomState) -> List[Dict[str, Any]]:
+        """
+
+        :param num_neurons:
+        :return:
+        """
+        results = {}
+        for key in self._neuron_keys:
+            if key in self._dist_args:
+                trans = get_translator(self._translators, key)
+                calling = {kwarg: self._dist_args[key][i]
+                           for i, kwarg in enumerate(trans.dist_args)}
+                calling.update({'size': num_neurons})
+                result = getattr(rng, trans.dist_type)(**calling) * trans.scale + trans.shift
+                results[key] = result
+
+        params = []
+        for i in range(num_neurons):
+            pars = self.neuron_parameters.copy()
+            for key in self._neuron_keys:
+                pars[key] = results[key][i]
+            params.append(pars)
+        return params
+
+    def generate_synapse_parameters(self, num_synapses: int,
+                                    rng: np.random.RandomState) -> Dict[str, np.ndarray]:
+        """
+
+        :param num_synapses:
+        :return: 1xN array for each distribution key, else
+        """
+        results = {}
+        for key in self._synapse_keys:
+            if key in self._dist_args:
+                trans = get_translator(self._translators, key)
+                calling = {kwarg: self._dist_args[key][i]
+                           for i, kwarg in enumerate(trans.dist_args)}
+                calling.update(size=(1, num_synapses))
+                result = getattr(rng, trans.dist_type)(**calling)
+                results[key] = result
+
+        pars = self.synaptic_parameters.copy()
+        pars.update(results)
+        return pars
+
+    def required_array_size(self) -> int:
+        """
+        :return: Size of the optimizer array required in order to satisfy the
+            parameter conversion to models.
+        """
+        return self._array_size
+
+    def from_optimizer(self, array: np.ndarray):
+        if len(array) != self._array_size:
+            raise ValueError("Optimizer array is wrong size. Expected {0},"
+                             " received {1}.".format(str(self._array_size),
+                                                     str(len(array))))
+        self._opt_parameters = array
+        index = 0
+        for key in self._key_order:
+            trans = get_translator(self._translators, key)
+            if isinstance(trans, ValueTranslator):
+                self._key_map[key][key] = trans.to_model(array[index])
+            elif isinstance(trans, DistributionTranslator):
+                self._dist_args[key] = trans.to_model(
+                    *array[index:index+trans.num_parameters()])
+            index += trans.num_parameters()

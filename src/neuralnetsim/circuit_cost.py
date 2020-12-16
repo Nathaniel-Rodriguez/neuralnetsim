@@ -1,6 +1,7 @@
 __all__ = ["circuit_cost",
            "training_cost",
-           "avalanche_cost"]
+           "avalanche_cost",
+           "distributed_avalanche_cost"]
 
 
 import math
@@ -12,7 +13,10 @@ from neuralnetsim import CircuitParameters
 from neuralnetsim import coincidence_factor
 from neuralnetsim import TrainingManager
 from neuralnetsim import CircuitManager
+from neuralnetsim import NeuralCircuit
 from neuralnetsim import avalanches_from_median_activity
+from neuralnetsim import DistributionParameters
+from neuralnetsim import DistributionCircuit
 from scipy.stats import wasserstein_distance
 from typing import Dict
 
@@ -147,7 +151,60 @@ def avalanche_cost(
     circuit_parameters.extend_neuron_parameters(translator.neuron_parameters)
     circuit_parameters.extend_synaptic_parameters(translator.synapse_parameters)
     circuit_parameters.extend_noise_parameters(translator.noise_parameters)
-    with CircuitManager(kernel_parameters, circuit_parameters) as circuit:
+    with CircuitManager(NeuralCircuit, kernel_parameters, circuit_parameters) as circuit:
+        circuit.run(duration)
+        model_spikes = circuit.get_spike_trains()
+        num_spikes = neuralnetsim.spike_count(model_spikes)
+        # if too few spikes, then isi can't be calculated, if too many
+        # than too much memory is used.
+        if (num_spikes > 4) and (num_spikes < 5000000):
+            model_avalanche_sizes = avalanches_from_median_activity(
+                model_spikes,
+                0.0,
+                duration
+            )[1]
+            # _, data_avalanche_sizes = avalanches_from_median_activity(
+            #     data,
+            #     0.0,
+            #     training_manager.get_duration()
+            # )
+            if len(model_avalanche_sizes) > 0:
+                d = wasserstein_distance(model_avalanche_sizes,
+                                         data_avalanche_sizes)
+                cost = -1 / math.log(d + 1)  # max cost is 0, min cost -inf
+            else:
+                cost = 0.0
+        else:
+            cost = 0.0
+        print("Num of spikes:",
+              str(int(num_spikes / 1000)) + "K",
+              "Cost", cost, flush=True)
+
+    return cost
+
+
+def distributed_avalanche_cost(
+        x: np.ndarray,
+        circuit_parameters: DistributionParameters,
+        kernel_parameters: Dict,
+        duration: float,
+        data_avalanche_sizes: np.ndarray,
+        rng: np.random.RandomState,
+        kernel_seeder: np.random.RandomState = None) -> float:
+    """
+    Calculates the cost for a given parameter array. Uses the Wasserstein
+    distance between model avalanche size distribution and data avalanche size
+    distribution as a cost. Uses a training manager to use subsets of the
+    training data for batches for each epoch of the trainer. Kernel seeder is
+    used to set new kernel seeds for each execution of the cost function.
+
+    """
+    if kernel_seeder is not None:
+        kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
+                                  'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
+    circuit_parameters.from_optimizer(x)
+    with CircuitManager(DistributionCircuit, kernel_parameters, circuit_parameters,
+                        rng) as circuit:
         circuit.run(duration)
         model_spikes = circuit.get_spike_trains()
         num_spikes = neuralnetsim.spike_count(model_spikes)

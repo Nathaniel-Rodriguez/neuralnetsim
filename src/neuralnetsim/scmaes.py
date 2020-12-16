@@ -289,17 +289,21 @@ class SCMAEvoStrat:
 
     def run(self, cost_function: Callable[[np.ndarray, Any], float],
             client: Client, num_iterations, cost_kwargs: Dict = None,
-            enable_path_history: bool = False):
+            enable_path_history: bool = False,
+            enable_rng_seed: str = None):
         """
         Initiates the ES run.
+
         :param cost_function: A callable function that will evaluate the cost
-        of a given array of parameters.
+            of a given array of parameters.
         :param client: A Dask client for distributing execution.
         :param num_iterations: How many evolutionary steps to take.
         :param cost_kwargs: Arguments to save on the worker which will be
-        forwarded to the cost function at execution. These can be large
-        data sets or objects, as they are only passed to the worker once.
+            forwarded to the cost function at execution. These can be large
+            data sets or objects, as they are only passed to the worker once.
         :param enable_path_history: Whether to save paths to the history.
+        :param enable_rng_seed: Specify a named argument to pass a unique rng
+            to each worker fitness function.
         :return: None
         """
         if cost_kwargs is None:
@@ -313,10 +317,21 @@ class SCMAEvoStrat:
         dask_workers = list(client.scheduler_info()['workers'].keys())
         if len(dask_workers) == 0:
             raise ValueError("Error: there are no workers.")
-        evo_workers = [client.submit(initialize_worker, cost_kwargs,
-                                     **self._kwargs, workers=[worker],
-                                     pure=False)
-                       for worker in dask_workers]
+        if enable_rng_seed is not None:
+            rng = np.random.RandomState(self._state._seed)
+            rngs = [np.random.RandomState(rng.randint(0, 1e6))
+                    for _ in range(num_workers)]
+            evo_workers = [client.submit(initialize_worker,
+                                         {**cost_kwargs, enable_rng_seed: rngs[i]},
+                                         **self._kwargs, workers=[worker],
+                                         pure=False)
+                           for i, worker in enumerate(dask_workers)]
+        else:
+            evo_workers = [client.submit(initialize_worker,
+                                         cost_kwargs,
+                                         **self._kwargs, workers=[worker],
+                                         pure=False)
+                           for worker in dask_workers]
 
         # begin evolutionary steps
         for i in range(num_iterations):

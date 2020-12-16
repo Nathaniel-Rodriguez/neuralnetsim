@@ -1,5 +1,7 @@
-__all__ = ["ValueTranslator", "ArrayTranslator",
-           "get_translator"]
+__all__ = ["ValueTranslator",
+           "ArrayTranslator",
+           "get_translator",
+           "DistributionTranslator"]
 
 
 import math
@@ -10,6 +12,7 @@ from typing import Dict
 from typing import Any
 from typing import Sequence
 from typing import Union
+from typing import Tuple
 
 
 class ValueTranslator:
@@ -65,10 +68,62 @@ class ValueTranslator:
         else:
             return (model_value - self._min) / (self._max - self._min)
 
+    def num_parameters(self) -> int:
+        return 1
+
     def __eq__(self, other):
         return self.key == other.key\
                and self._min == other._min\
                and self._max == other._max
+
+
+class DistributionTranslator:
+    def __init__(self, key: str, dist_type: str,
+                 dist_bounds: Dict[str, Tuple[float, float]],
+                 shift: float = None,
+                 scale: float = None):
+        """
+        :param key: A string specifying the kind of parameter this translator
+            is responsible for.
+        :param vmin: The minimum allowed model value for this parameter.
+        :param vmax: The maximum allowed model value for this parameter.
+        """
+        self.key = key
+        self.dist_type = dist_type
+        self.dist_args = [key for key in dist_bounds.keys()]
+        self.shift = shift
+        self.scale = scale
+        self._dist_bounds = dist_bounds
+
+    def to_model(self, *args) -> List[float]:
+        """
+        Converts an optimizer value into a model value.
+
+        :param optimizer_value: A given optimizer value.
+        :return: The converted value for the model.
+        """
+        dist_args = []
+        for i, arg in enumerate(args):
+            dist_args.append(((-math.fabs(arg % 2 - 1) + 1)
+                     * (self._dist_bounds[self.dist_args[i]][1]
+                        - self._dist_bounds[self.dist_args[i]][0]))
+                             + self._dist_bounds[self.dist_args[i]][0])
+        return dist_args
+
+    # def to_optimizer(self, model_value: float) -> float:
+    #     """
+    #     Converts a model value into an optimizer value.
+    #
+    #     :param model_value: A given model value.
+    #     :return: The converted value for the optimizer.
+    #     """
+    #     return (model_value - self._min) / (self._max - self._min)
+
+    def num_parameters(self) -> int:
+        return len(self.dist_args)
+
+    def __eq__(self, other):
+        return self.key == other.key
 
 
 def get_translator(translators: List[ValueTranslator],

@@ -65,6 +65,7 @@ class TestCircuitManager(unittest.TestCase):
     def test_context(self):
         run_success = False
         with neuralnetsim.CircuitManager(
+                neuralnetsim.NeuralCircuit,
                 {'grng_seed': 16, 'rng_seeds': [24]},
                 self.params) as net:
             net.run(500.0)
