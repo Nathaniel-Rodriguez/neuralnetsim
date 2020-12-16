@@ -5,7 +5,8 @@ __all__ = ["spike_count",
            "network_isi_distribution",
            "isi_distribution_by_neuron",
            "mean_isi",
-           "avalanches_from_median_activity"]
+           "avalanches_from_median_activity",
+           "participating_neuron_distribution"]
 
 
 import numpy as np
@@ -193,3 +194,25 @@ def avalanches_from_median_activity(
         bins,
         0.0  # np.median(spikes)
     )
+
+
+def participating_neuron_distribution(avalanche_times: np.ndarray,
+                                      spike_data: Dict[int, np.ndarray]) -> np.ndarray:
+    """
+
+    :param avalanche_times:
+    :param spike_data:
+    :return:
+    """
+    import time
+    s = time.time()
+    participation_dist = np.zeros(len(avalanche_times), dtype=np.int32)
+    for i, (start, stop) in enumerate(avalanche_times):
+        for spikes in spike_data.values():
+            if len(spikes[np.logical_and(
+                spikes >= start,
+                spikes < stop
+            )]) >= 1:
+                participation_dist[i] += 1
+    print("part time", time.time() - s, "num aval", len(avalanche_times), flush=True)
+    return participation_dist
