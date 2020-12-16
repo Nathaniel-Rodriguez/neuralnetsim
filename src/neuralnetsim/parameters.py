@@ -210,7 +210,7 @@ class DistributionParameters:
                 calling = {kwarg: self._dist_args[key][i]
                            for i, kwarg in enumerate(trans.dist_args)}
                 calling.update(size=(1, num_synapses))
-                result = getattr(rng, trans.dist_type)(**calling)
+                result = getattr(rng, trans.dist_type)(**calling) * trans.scale + trans.shift
                 results[key] = result
 
         pars = self.synaptic_parameters.copy()
