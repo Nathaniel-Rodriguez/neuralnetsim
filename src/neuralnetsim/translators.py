@@ -80,8 +80,8 @@ class ValueTranslator:
 class DistributionTranslator:
     def __init__(self, key: str, dist_type: str,
                  dist_bounds: Dict[str, Tuple[float, float]],
-                 shift: float = None,
-                 scale: float = None):
+                 shift: float = 0.0,
+                 scale: float = 1.0):
         """
         :param key: A string specifying the kind of parameter this translator
             is responsible for.
