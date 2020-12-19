@@ -335,6 +335,7 @@ class SCMAEvoStrat:
 
         # begin evolutionary steps
         for i in range(num_iterations):
+            print("Step: ", i)
             # update populations
             pop_update_jobs = []
             for worker_id in range(num_workers):

@@ -6,12 +6,23 @@ __all__ = ["spike_count",
            "isi_distribution_by_neuron",
            "mean_isi",
            "avalanches_from_median_activity",
-           "participating_neuron_distribution"]
+           "participating_neuron_distribution",
+           "get_acorr_time",
+           "embed_time_series",
+           "generate_umap_map",
+           "generate_persistence_diagrams",
+           "diagram_distances",
+           "firing_rate_distribution"]
 
 
 import numpy as np
+import umap
+import ripser
+import statsmodels.tsa.stattools as stats
+from persim import sliced_wasserstein
 from typing import Dict
 from typing import Tuple
+from typing import List
 
 
 def spike_count(data: Dict[int, np.ndarray]) -> int:
@@ -26,6 +37,14 @@ def spike_count(data: Dict[int, np.ndarray]) -> int:
     for arr in data.values():
         num_spikes += len(arr)
     return num_spikes
+
+
+def firing_rate_distribution(data: Dict[int, np.ndarray],
+                             duration: float) -> np.ndarray:
+    firing_rates = []
+    for spikes in data.values():
+        firing_rates.append(len(spikes) / duration)
+    return np.array(firing_rates)
 
 
 def isi_distribution_by_neuron(spike_data: Dict[int, np.ndarray]) -> Dict[int, np.ndarray]:
@@ -165,7 +184,8 @@ def detect_avalanches(binned_spikes: np.ndarray,
 def avalanches_from_median_activity(
         spike_data: Dict[int, np.ndarray],
         start_time: float,
-        stop_time: float) -> Tuple[np.ndarray, np.ndarray]:
+        stop_time: float,
+        resolution: float = None) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the avalanches based on the median level of network activity
     based on binned total activity. Bin size is the mean network ISI.
@@ -173,21 +193,23 @@ def avalanches_from_median_activity(
     :param spike_data: A dictionary of the spike data for each neuron.
     :param start_time: The start time from which to begin the bins.
     :param stop_time: The end time of the bins.
+    :param resolution: Defaults to network ISI. This is the bin size.
     :return: A 2-D numpy array of size Kx2 where K is the number of avalanches.
         The first dimension is the avalanche start time, and the second is the
         avalanche end time. The second 1-D K size array gives the size of the
         corresponding avalanches. The size is the total number of spikes
         above the baseline threshold integrated between the start and end times.
     """
-    resolution = np.mean(network_isi_distribution(
-        {node: values[np.logical_and(values >= start_time,
-                                     values < stop_time)]
-         for node, values in spike_data.items()}
-    ))
-    if np.isnan(resolution):
-        print(start_time, stop_time,
-              sum(len(s) for s in spike_data.values()), flush=True)
-        raise ValueError("NAN RESOLUTION: FAILED TO CALCULATE ISI")
+    if resolution is None:
+        resolution = np.mean(network_isi_distribution(
+            {node: values[np.logical_and(values >= start_time,
+                                         values < stop_time)]
+             for node, values in spike_data.items()}
+        ))
+        if np.isnan(resolution):
+            print(start_time, stop_time,
+                  sum(len(s) for s in spike_data.values()), flush=True)
+            raise ValueError("NAN RESOLUTION: FAILED TO CALCULATE ISI")
     spikes, bins = bin_spikes(spike_data, start_time, stop_time, resolution)
     return detect_avalanches(
         spikes,
@@ -216,3 +238,86 @@ def participating_neuron_distribution(avalanche_times: np.ndarray,
                 participation_dist[i] += 1
     print("part time", time.time() - s, "num aval", len(avalanche_times), flush=True)
     return participation_dist
+
+
+def get_acorr_time(binned_spikes: np.ndarray, lags=1000, threshold=0.5) -> int:
+    acorr = stats.acf(binned_spikes, nlags=lags, fft=True)
+    acorr_time = 0
+    while (acorr_time < len(acorr)) and (acorr[acorr_time] > threshold):
+        acorr_time += 1
+    return acorr_time
+
+
+def embed_time_series(x: np.ndarray,
+                      tau: int,
+                      dimensions: int) -> np.ndarray:
+    """
+    :param x: 1-D time-series (length N)
+    :param tau: number of time-steps back for delay
+    :param dimensions: dimensionality of the embedding
+    :return: (N - dimensions*tau) x (dimensions)
+    """
+    if len(x) < dimensions * tau:
+        raise ValueError(
+            "Time series can't accommodate embedding: "
+            + "Num points {0}, tau {1}, required {2}".format(
+                str(len(x)), str(tau), str(tau * dimensions))
+        )
+    embedding = np.zeros(shape=(len(x) - dimensions * tau, dimensions))
+    for dim in range(embedding.shape[1]):
+        embedding[:, dim] = x[dimensions * tau - dim * tau:len(x) - dim * tau]
+
+    return embedding
+
+
+def generate_umap_map(
+        binned_data,
+        dimensionality,
+        max_lags,
+        **kwargs) -> umap.UMAP:
+    lag_time = get_acorr_time(binned_data, max_lags)
+    embeding = embed_time_series(binned_data, lag_time, dimensionality)
+    fit = umap.UMAP(
+        **kwargs
+    )
+    return fit.fit(embeding)
+
+
+def generate_persistence_diagrams(
+        binned_data: np.ndarray,
+        dimensionality: int,
+        max_lags,
+        **kwargs
+) -> List[np.ndarray]:
+    """
+
+    :param binned_data:
+    :param dimensionality:
+    :param kwargs:
+    :return:
+    """
+    ripargs = kwargs.copy()
+    lag_time = get_acorr_time(binned_data, max_lags)
+    print("lag time", lag_time)
+    embeding = embed_time_series(binned_data, lag_time, dimensionality)
+    if (ripargs["n_perm"] is not None) \
+            and (embeding.shape[0] < ripargs["n_perm"]):
+        ripargs["n_perm"] = None
+    return ripser.ripser(embeding, **ripargs)['dgms']
+
+
+def diagram_distances(
+        diagrams1,
+        diagrams2
+) -> float:
+    # assume first in each list is H0, drop inf
+    assert(len(diagrams1) == len(diagrams2))
+    total_distance = 0
+    for i in range(len(diagrams1)):
+        if i == 0:
+            d1 = diagrams1[i][~np.isinf(diagrams1[i]).any(axis=1)]
+            d2 = diagrams2[i][~np.isinf(diagrams2[i]).any(axis=1)]
+            total_distance += sliced_wasserstein(d1, d2)
+        else:
+            total_distance += sliced_wasserstein(diagrams1[i], diagrams2[i])
+    return total_distance

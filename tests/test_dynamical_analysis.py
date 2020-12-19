@@ -87,3 +87,7 @@ class TestDynamicalAnalysis(unittest.TestCase):
         self.assertAlmostEqual(av_times[0][0], 0.0)
         self.assertAlmostEqual(av_times[0][1], 1.0)
         self.assertAlmostEqual(av_sizes[0], 1.0)
+
+    def test_get_acorr_time(self):
+        data = np.array([1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0])
+        self.assertEqual(neuralnetsim.get_acorr_time(data), 1)

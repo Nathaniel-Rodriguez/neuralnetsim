@@ -110,20 +110,21 @@ class DistributionTranslator:
                              + self._dist_bounds[self.dist_args[i]][0])
         return dist_args
 
-    # def to_optimizer(self, model_value: float) -> float:
-    #     """
-    #     Converts a model value into an optimizer value.
-    #
-    #     :param model_value: A given model value.
-    #     :return: The converted value for the optimizer.
-    #     """
-    #     return (model_value - self._min) / (self._max - self._min)
-
     def num_parameters(self) -> int:
         return len(self.dist_args)
 
     def __eq__(self, other):
         return self.key == other.key
+
+    def __repr__(self):
+        s = "======================="
+        s += "Key: " + self.key + '\n'
+        s += "Type: " + self.dist_type + '\n'
+        s += "Args: " + str(self.dist_args) + '\n'
+        s += "shift: " + str(self.shift) + '\n'
+        s += "scale: " + str(self.scale) + '\n'
+        s += "bounds: " + str(self._dist_bounds) + '\n'
+        return s
 
 
 def get_translator(translators: List[ValueTranslator],

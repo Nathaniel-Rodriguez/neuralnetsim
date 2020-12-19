@@ -4,6 +4,8 @@ __all__ = ["CircuitParameters",
 
 import numpy as np
 import networkx as nx
+import matplotlib.pyplot as plt
+from pathlib import Path
 from neuralnetsim import get_translator
 from neuralnetsim import ValueTranslator
 from neuralnetsim import DistributionTranslator
@@ -113,10 +115,6 @@ class CircuitParameters:
 
 class DistributionParameters:
     """"""
-    # return parameters for noise, synapse, global, and neuron
-    # needs to generate lists of synapse/neuron
-    # needs to take translators & dist translators (check whether to draw or not from translator based on type)
-    # needs to do to_opt and from_opt, required_array size
     def __init__(
             self,
             graph: nx.DiGraph,
@@ -239,3 +237,29 @@ class DistributionParameters:
                 self._dist_args[key] = trans.to_model(
                     *array[index:index+trans.num_parameters()])
             index += trans.num_parameters()
+
+    def plot_parameter_distributions(
+            self,
+            outdir: Path = None,
+            prefix: str = "test",
+            num_samples: int = 10000,
+            bins: int = 100
+    ):
+        if outdir is None:
+            outdir = Path.cwd()
+        rng = np.random.RandomState()
+        for trans in self._translators:
+            if isinstance(trans, DistributionTranslator):
+                calling = {kwarg: self._dist_args[trans.key][i]
+                           for i, kwarg in enumerate(trans.dist_args)}
+                calling.update({'size': num_samples})
+                result = getattr(rng, trans.dist_type)(**calling) * trans.scale + trans.shift
+                plt.hist(result, bins=bins)
+                plt.title(trans.key + " " + str(calling)
+                          + " scale " + str(trans.scale) + " shift "
+                          + str(trans.shift),
+                          fontsize=6)
+                plt.savefig(outdir.joinpath(prefix + "_" + trans.key + "_dist.png"),
+                            dpi=300)
+                plt.close()
+                plt.clf()
