@@ -24,7 +24,10 @@ setup(name='neuralnetsim',
           'PyNEST',
           'dask>=2.30.0',
           'distributed>=2.30.0',
-          'pandas>=1.1.3'
+          'pandas>=1.1.3',
+          'umap-learn>=0.4.6',
+          'ripser>=0.6.0',
+          'persim>=0.1.3'
       ],
       include_package_data=False,
       python_requires='>=3.7',
