@@ -22,6 +22,7 @@ from neuralnetsim import NeuralCircuit
 from neuralnetsim import avalanches_from_median_activity
 from neuralnetsim import DistributionParameters
 from neuralnetsim import DistributionCircuit
+from neuralnetsim import InhibCircuit
 from scipy.stats import wasserstein_distance
 from typing import Dict
 from typing import List
@@ -451,6 +452,7 @@ def size_and_duration_cost(
         duration: float,
         data_avalanche_sizes: np.ndarray,
         data_avalanche_durations: np.ndarray,
+        circuit_choice,
         rng: np.random.RandomState,
         kernel_seeder: np.random.RandomState = None) -> float:
     """
@@ -465,14 +467,14 @@ def size_and_duration_cost(
         kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
                                   'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
     circuit_parameters.from_optimizer(x)
-    with CircuitManager(DistributionCircuit, kernel_parameters, circuit_parameters,
+    with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
                         rng) as circuit:
         if not circuit.run(
                 duration,
                 memory_guard={
                     'duration': 1000.0,
                     # 'max_spikes': 1250000000 / duration * 1000 # ~10GB
-                    'max_spikes': 10000  # ~10 spikes/ms
+                    'max_spikes': 8000  # ~10 spikes/ms
                 }
         ):
             print("\tMemory guard activated", flush=True)
@@ -488,11 +490,16 @@ def size_and_duration_cost(
                 duration
             )
             if len(model_avalanche_sizes) > 0:
-                d = wasserstein_distance(model_avalanche_sizes,
-                                         data_avalanche_sizes)
+                # d = wasserstein_distance(model_avalanche_sizes,
+                #                          data_avalanche_sizes)
+                # f = wasserstein_distance(model_times[:, 1] - model_times[:, 0],
+                #                          data_avalanche_durations)
+                # cost = -1 / math.log(f + d + 1)  # max cost is 0, min cost -inf
+                # d = wasserstein_distance(model_avalanche_sizes,
+                #                          data_avalanche_sizes)
                 f = wasserstein_distance(model_times[:, 1] - model_times[:, 0],
                                          data_avalanche_durations)
-                cost = -1 / math.log(f + d + 1)  # max cost is 0, min cost -inf
+                cost = -1 / math.log(f + 1)  # max cost is 0, min cost -inf
             else:
                 cost = 0.0
         else:
