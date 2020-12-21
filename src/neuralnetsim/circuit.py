@@ -1,6 +1,7 @@
 __all__ = ["NeuralCircuit",
            "DistributionCircuit",
-           "CircuitManager"]
+           "CircuitManager",
+           "InhibCircuit"]
 
 
 import networkx as nx
@@ -196,6 +197,24 @@ class DistributionCircuit:
         }
 
 
+class InhibCircuit(DistributionCircuit):
+    def __init__(
+            self,
+            circuit_parameters: DistributionParameters,
+            rng: np.random.RandomState
+    ):
+        new_network = circuit_parameters.network.copy()
+        for v, node in circuit_parameters.global_parameters.items():
+            if isinstance(node, int):
+                if v < 0.5:  # if less than 0.5 treat as inhibitory
+                    successors = new_network.neighbors(node)
+                    for successor in successors:
+                        new_network[node][successor]['weight'] =\
+                            -new_network[node][successor]['weight']
+        circuit_parameters.network = new_network
+        super().__init__(circuit_parameters, rng)
+
+
 class CircuitManager:
     """
     CircuitManager manages the NEST kernel as a context manager. It builds
@@ -231,3 +250,4 @@ class CircuitManager:
 
 if __name__ == "__main__":
     pass
+
