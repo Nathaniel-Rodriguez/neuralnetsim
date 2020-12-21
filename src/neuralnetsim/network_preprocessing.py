@@ -1,4 +1,6 @@
-__all__ = ["get_network", "add_communities", "add_positions",
+__all__ = ["get_network",
+           "add_communities",
+           "add_positions",
            "apply_weight_threshold",
            "build_graph_from_data",
            "get_first_loss_graph",
@@ -128,7 +130,7 @@ def add_communities(graph: nx.DiGraph,
         com_graph = convert_scale(com_graph)
 
     if infomap_commands is None:
-        infomap_commands = ["-N 10", "--two-level", "--directed", "--silent"]
+        infomap_commands = ["--silent"]
     if seed is not None:
         infomap_commands.append("--seed " + str(seed))
     imap = infomap.Infomap(" ".join(infomap_commands))
