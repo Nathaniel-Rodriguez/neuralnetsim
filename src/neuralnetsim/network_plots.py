@@ -45,7 +45,7 @@ def plot_weight_distribution(graph: nx.DiGraph,
 
 
 def plot_slice(graph: nx.DiGraph,
-               color_key: str = "level2",
+               color_key: str,
                save_dir: Path = None,
                prefix: str = ""):
     """
@@ -62,15 +62,6 @@ def plot_slice(graph: nx.DiGraph,
     """
     if save_dir is None:
         save_dir = Path.cwd()
-    nx.draw_networkx_nodes(
-        graph,
-        nx.get_node_attributes(graph, "pos"),
-        node_color=list(nx.get_node_attributes(graph, color_key).values()),
-        node_size=20,
-        cmap=cm.Set1,
-        label=None,
-        linewidths=0.0
-    )
     weights = np.array(list(nx.get_edge_attributes(graph, "weight").values()))
     np.log(weights, out=weights)
     ecdf = ECDF(weights)
@@ -90,7 +81,16 @@ def plot_slice(graph: nx.DiGraph,
             width=0.5,
             alpha=edge_alphas[i]
         )
-
+    nx.draw_networkx_nodes(
+        graph,
+        nx.get_node_attributes(graph, "pos"),
+        node_color=[
+            cm.Set1(i-1) for i in list(nx.get_node_attributes(graph, color_key).values())
+        ],
+        node_size=20,
+        label=None,
+        linewidths=0.0
+    )
     ax = plt.gca()
     ax.set_axis_off()
     plt.savefig(save_dir.joinpath(prefix + "_slice.pdf"))
