@@ -101,7 +101,7 @@ def main():
         graph = neuralnetsim.load(
             Path(args.graphdir).joinpath(args.name + "_graph.pyobj"))
         data = neuralnetsim.load(
-            Path(args.datadir).joinpath(args.name).joinpath("data.pyobj")
+            Path(args.datadir).joinpath(args.name).joinpath("data.mat")
         )
 
         # configure model
