@@ -100,7 +100,7 @@ def main():
         # load in data
         graph = neuralnetsim.load(
             Path(args.graphdir).joinpath(args.name + "_graph.pyobj"))
-        data = neuralnetsim.load(
+        data = neuralnetsim.load_spike_times(
             Path(args.datadir).joinpath(args.name).joinpath("data.mat")
         )
 
