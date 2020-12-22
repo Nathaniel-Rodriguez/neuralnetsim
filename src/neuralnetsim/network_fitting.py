@@ -46,7 +46,7 @@ def fit_network(graph: nx.DiGraph,
                 prefix: str = "test"):
     """
     Initiates a Dask run that fits a given number of graphs to multiple
-    modularities. Saves the results in a `fit_newtwork_results.pyobj` file.
+    modularities. Saves the results in a `fit_network_results.pyobj` file.
     This is a Python object file.
 
     :param graph: The graph that will be fit too.
