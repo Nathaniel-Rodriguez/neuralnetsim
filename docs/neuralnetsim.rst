@@ -31,5 +31,6 @@ Submodules
    neuralnetsim.optimizer_net
    neuralnetsim.parameters
    neuralnetsim.scmaes
+   neuralnetsim.simulation
    neuralnetsim.sliceops
    neuralnetsim.translators
