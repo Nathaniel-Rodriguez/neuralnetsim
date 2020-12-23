@@ -20,7 +20,7 @@ from neuralnetsim import coincidence_factor
 from neuralnetsim import TrainingManager
 from neuralnetsim import CircuitManager
 from neuralnetsim import NeuralCircuit
-from neuralnetsim import avalanches_from_median_activity
+from neuralnetsim import avalanches_from_zero_activity
 from neuralnetsim import DistributionParameters
 from neuralnetsim import DistributionCircuit
 from neuralnetsim import InhibCircuit
@@ -166,12 +166,12 @@ def avalanche_cost(
         # if too few spikes, then isi can't be calculated, if too many
         # than too much memory is used.
         if (num_spikes > 4) and (num_spikes < 5000000):
-            model_avalanche_sizes = avalanches_from_median_activity(
+            model_avalanche_sizes = avalanches_from_zero_activity(
                 model_spikes,
                 0.0,
                 duration
             )[1]
-            # _, data_avalanche_sizes = avalanches_from_median_activity(
+            # _, data_avalanche_sizes = avalanches_from_zero_activity(
             #     data,
             #     0.0,
             #     training_manager.get_duration()
@@ -228,7 +228,7 @@ def distributed_avalanche_cost(
         # if too few spikes, then isi can't be calculated, if too many
         # than too much memory is used.
         if (num_spikes > 4) and (num_spikes < 10000000):
-            model_avalanche_sizes = avalanches_from_median_activity(
+            model_avalanche_sizes = avalanches_from_zero_activity(
                 model_spikes,
                 0.0,
                 duration
@@ -285,7 +285,7 @@ def avalanche_participation_cost(
         # if too few spikes, then isi can't be calculated, if too many
         # than too much memory is used.
         if (num_spikes > 4) and (num_spikes < 10000000):
-            times, model_avalanche_sizes = avalanches_from_median_activity(
+            times, model_avalanche_sizes = avalanches_from_zero_activity(
                 model_spikes,
                 0.0,
                 duration
@@ -421,7 +421,7 @@ def avalanche_firing_cost(
         # if too few spikes, then isi can't be calculated, if too many
         # than too much memory is used.
         if (num_spikes > 4) and (num_spikes < 10000000):
-            model_avalanche_sizes = avalanches_from_median_activity(
+            model_avalanche_sizes = avalanches_from_zero_activity(
                 model_spikes,
                 0.0,
                 duration
@@ -485,7 +485,7 @@ def size_and_duration_cost(
         # if too few spikes, then isi can't be calculated, if too many
         # than too much memory is used.
         if (num_spikes > 4) and (num_spikes < 10000000):
-            model_times, model_avalanche_sizes = avalanches_from_median_activity(
+            model_times, model_avalanche_sizes = avalanches_from_zero_activity(
                 model_spikes,
                 0.0,
                 duration
@@ -549,7 +549,7 @@ def duration_cost(
         # if too few spikes, then isi can't be calculated, if too many
         # than too much memory is used.
         if (num_spikes > 4) and (num_spikes < 10000000):
-            model_times, model_avalanche_sizes = avalanches_from_median_activity(
+            model_times, model_avalanche_sizes = avalanches_from_zero_activity(
                 model_spikes,
                 0.0,
                 duration

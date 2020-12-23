@@ -5,20 +5,27 @@ __all__ = ["spike_count",
            "network_isi_distribution",
            "isi_distribution_by_neuron",
            "mean_isi",
-           "avalanches_from_median_activity",
+           "avalanches_from_zero_activity",
            "participating_neuron_distribution",
            "get_acorr_time",
            "embed_time_series",
            "generate_umap_map",
            "generate_persistence_diagrams",
            "diagram_distances",
-           "firing_rate_distribution"]
+           "firing_rate_distribution",
+           "process_sim_results"]
 
 
+import neuralnetsim
+import networkx as nx
 import numpy as np
 import umap
 import ripser
 import statsmodels.tsa.stattools as stats
+import pandas as pd
+import powerlaw
+from collections import Counter
+from pathlib import Path
 from persim import sliced_wasserstein
 from typing import Dict
 from typing import Tuple
@@ -134,9 +141,12 @@ def activity(binned_spikes: np.ndarray,
                        mode='valid')
 
 
-def detect_avalanches(binned_spikes: np.ndarray,
-                      bins: np.ndarray,
-                      activity_threshold: float) -> Tuple[np.ndarray, np.ndarray]:
+def detect_avalanches(
+        binned_spikes: np.ndarray,
+        bins: np.ndarray,
+        activity_threshold: float,
+        discrete_times: bool = False
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Detects avalanches given spike data from the neural network. Cuts off the
     last avalanche if it does not end before the last bin, since it is not
@@ -165,12 +175,18 @@ def detect_avalanches(binned_spikes: np.ndarray,
             if avalanche_mask[i]:
                 avalanche = True
                 avalanche_size = binned_spikes[i]
-                avalanche_start = bins[i]
+                if discrete_times:
+                    avalanche_start = i
+                else:
+                    avalanche_start = bins[i]
         else:
             if avalanche_mask[i]:
                 avalanche_size += binned_spikes[i]
             else:
-                avalanche_end = bins[i]
+                if discrete_times:
+                    avalanche_end = i
+                else:
+                    avalanche_end = bins[i]
                 avalanche = False
                 avalanche_times.append((avalanche_start, avalanche_end))
                 avalanche_sizes.append(
@@ -181,13 +197,15 @@ def detect_avalanches(binned_spikes: np.ndarray,
     return np.array(avalanche_times), np.array(avalanche_sizes)
 
 
-def avalanches_from_median_activity(
+def avalanches_from_zero_activity(
         spike_data: Dict[int, np.ndarray],
         start_time: float,
         stop_time: float,
-        resolution: float = None) -> Tuple[np.ndarray, np.ndarray]:
+        resolution: float = None,
+        discrete_times: bool = False
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Calculates the avalanches based on the median level of network activity
+    Calculates the avalanches based on the zero level of network activity
     based on binned total activity. Bin size is the mean network ISI.
 
     :param spike_data: A dictionary of the spike data for each neuron.
@@ -214,7 +232,8 @@ def avalanches_from_median_activity(
     return detect_avalanches(
         spikes,
         bins,
-        0.0  # np.median(spikes)
+        0.0,
+        discrete_times
     )
 
 
@@ -321,3 +340,173 @@ def diagram_distances(
         else:
             total_distance += sliced_wasserstein(diagrams1[i], diagrams2[i])
     return total_distance
+
+
+def largest_community(
+        node_communities: Dict[int, int],
+        nth_largest: int
+):
+    return Counter(node_communities.values()).most_common(nth_largest)
+
+
+def process_sim_results(
+        graphs_path: Path,
+        sim_path: Path
+) -> pd.DataFrame:
+    graph_data = neuralnetsim.load(graphs_path)
+    sim_data = neuralnetsim.load(sim_path)
+    assert len(graph_data['graphs']) == len(sim_data['spike_data'])
+    av_size_slope = []
+    av_truncated_size_slope = []
+    av_duration_slope = []
+    av_truncated_duration_slope = []
+    av_mean_sizes = []
+    av_mean_durations = []
+    av_com1_mean_sizes = []
+    av_com1_mean_durations = []
+    av_com2_mean_sizes = []
+    av_com2_mean_durations = []
+    av_com3_mean_sizes = []
+    av_com3_mean_durations = []
+    durations = []
+    mus = []
+    trials = []
+    for i in range(len(graph_data['graphs'])):
+        mus.append(graph_data['target_modularities'][i])
+        trials.append(graph_data['trials'][i])
+        durations.append(sim_data['duration'])
+
+        # network wide stats
+        bins_size = float(np.mean(network_isi_distribution(sim_data['spike_data'][i])))
+        av_times, av_sizes = avalanches_from_zero_activity(
+            sim_data['spike_data'][i],
+            0.0,
+            sim_data['duration'],
+            bins_size,
+            True
+        )
+        av_durations = av_times[:, 1] - av_times[:, 0]
+        sfit = powerlaw.Fit(av_sizes, discrete=True)
+        av_size_slope.append(sfit.alpha)
+        av_truncated_size_slope.append(sfit.truncated_power_law.parameter1)
+        dfit = powerlaw.Fit(av_durations, discrete=True)
+        av_duration_slope.append(dfit.alpha)
+        av_truncated_duration_slope.append(dfit.truncated_power_law.parameter1)
+        av_mean_sizes.append(np.mean(av_sizes))
+        av_mean_durations.append(np.mean(av_durations) * bins_size)
+
+        # collected community data stats
+        node_coms = nx.get_node_attributes(graph_data['graphs'][i], "level1")
+        largest_coms = largest_community(node_coms, 3)
+        com1_spikes = {node: sim_data['spike_data'][i][node]
+                       for node, com in node_coms.items()
+                       if com == largest_coms[0][0]}
+        if len(largest_coms) > 1:
+            com2_spikes = {node: sim_data['spike_data'][i][node]
+                           for node, com in node_coms.items()
+                           if com == largest_coms[1][0]}
+        else:
+            com2_spikes = {}
+        if len(largest_coms) > 2:
+            com3_spikes = {node: sim_data['spike_data'][i][node]
+                           for node, com in node_coms.items()
+                           if com == largest_coms[2][0]}
+        else:
+            com3_spikes = {}
+
+        # community stats
+        if len(com1_spikes) >= 4:
+            bins_size = float(np.mean(network_isi_distribution(com1_spikes)))
+            av_times, av_sizes = avalanches_from_zero_activity(
+                com1_spikes,
+                0.0,
+                sim_data['duration'],
+                bins_size,
+                False
+            )
+            av_durations = av_times[:, 1] - av_times[:, 0]
+            av_com1_mean_sizes.append(np.mean(av_sizes))
+            av_com1_mean_durations.append(np.mean(av_durations))
+        else:
+            av_com1_mean_sizes.append(0.0)
+            av_com1_mean_durations.append(0.0)
+
+        if len(com2_spikes) >= 4:
+            bins_size = float(np.mean(network_isi_distribution(com2_spikes)))
+            av_times, av_sizes = avalanches_from_zero_activity(
+                com2_spikes,
+                0.0,
+                sim_data['duration'],
+                bins_size,
+                False
+            )
+            av_durations = av_times[:, 1] - av_times[:, 0]
+            av_com2_mean_sizes.append(np.mean(av_sizes))
+            av_com2_mean_durations.append(np.mean(av_durations))
+        else:
+            av_com2_mean_sizes.append(0.0)
+            av_com2_mean_durations.append(0.0)
+
+        if len(com3_spikes) >= 4:
+            bins_size = float(np.mean(network_isi_distribution(com3_spikes)))
+            av_times, av_sizes = avalanches_from_zero_activity(
+                com3_spikes,
+                0.0,
+                sim_data['duration'],
+                bins_size,
+                False
+            )
+            av_durations = av_times[:, 1] - av_times[:, 0]
+            av_com3_mean_sizes.append(np.mean(av_sizes))
+            av_com3_mean_durations.append(np.mean(av_durations))
+        else:
+            av_com3_mean_sizes.append(0.0)
+            av_com3_mean_durations.append(0.0)
+
+    return pd.DataFrame({
+        'size slope': av_size_slope,
+        'truncated size slope': av_truncated_size_slope,
+        'duration slope': av_duration_slope,
+        'truncated duration slope': av_truncated_duration_slope,
+        'size': av_mean_sizes,
+        'duration': av_mean_durations,
+        'com 1 size': av_com1_mean_sizes,
+        'com 1 duration': av_com1_mean_durations,
+        'com 2 size': av_com2_mean_sizes,
+        'com 2 duration': av_com2_mean_durations,
+        'com 3 sizes': av_com3_mean_sizes,
+        'com 3 duration': av_com3_mean_durations,
+        'max duration': durations,
+        r'$\mu$': mus,
+        'trial': trials
+    })
+
+
+def agg_sim_avalanche_distributions(
+        graphs_path: Path,
+        sim_path: Path,
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[str]]:
+    graph_data = neuralnetsim.load(graphs_path)
+    sim_data = neuralnetsim.load(sim_path)
+    assert len(graph_data['graphs']) == len(sim_data['spike_data'])
+
+    mus = graph_data['parameters']['modularities']
+    sizes = [np.zeros(0) for _ in mus]
+    durations = [np.zeros(0) for _ in mus]
+    for mu, i in enumerate(mus):
+        for j in range(len(graph_data['graphs'])):
+            if graph_data['target_modularities'][j] == mu:
+                bins_size = float(np.mean(network_isi_distribution(
+                    sim_data['spike_data'][i])))
+                av_times, av_sizes = avalanches_from_zero_activity(
+                    sim_data['spike_data'][i],
+                    0.0,
+                    sim_data['duration'],
+                    bins_size,
+                    True
+                )
+                av_durations = av_times[:, 1] - av_times[:, 0]
+                sizes[i] = np.concatenate((sizes[i], av_sizes))
+                durations[i] = np.concatenate((durations[i], av_durations))
+
+    return sizes, durations, mus

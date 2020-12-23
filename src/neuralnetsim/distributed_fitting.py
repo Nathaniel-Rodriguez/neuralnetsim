@@ -3,6 +3,10 @@ import neuralnetsim
 import numpy as np
 from distributed import Client, LocalCluster
 from pathlib import Path
+import nest
+
+
+nest.set_verbosity(40)
 
 
 def main():
@@ -123,7 +127,7 @@ def main():
                 for node in graph.nodes()}
         xvalidation_manager = neuralnetsim.DataManager(
             data, num_folds=1, test_ratio=0.1, start_buffer=0.1)
-        ava_times = neuralnetsim.avalanches_from_median_activity(
+        ava_times = neuralnetsim.avalanches_from_zero_activity(
             xvalidation_manager.get_training_fold(0),
             0.0,
             xvalidation_manager.get_duration("training", 0, 20.0)
