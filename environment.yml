@@ -178,4 +178,5 @@ dependencies:
     - pynest==nest-2.20.0
     - ripser==0.6.0
     - topology==nest-2.20.0
+    - powerlaw==1.4.6
 
