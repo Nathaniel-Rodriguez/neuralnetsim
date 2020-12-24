@@ -263,3 +263,21 @@ class DistributionParameters:
                             dpi=300)
                 plt.close()
                 plt.clf()
+
+    def __repr__(self):
+        s = "======== Circuit Parameters ===============" + "\n"
+        s += "network: " + self.network.__repr__() + "\n"
+        s += nx.info(self.network) + "\n"
+        s += "neuron model: " + self.neuron_model.__repr__() + "\n"
+        s += "translators: " + self._translators.__repr__() + "\n"
+        s += "global keys: " + self._global_keys.__repr__() + "\n"
+        s += "noise keys: " + self._noise_keys.__repr__() + "\n"
+        s += "synapse keys: " + self._synapse_keys.__repr__() + "\n"
+        s += "neuron keys: " + self._neuron_keys.__repr__() + "\n"
+        s += "key order: " + self._key_order.__repr__() + "\n"
+        s += "array size: " + self._array_size.__repr__() + "\n"
+        s += "dist args: " + self._dist_args.__repr__() + "\n"
+        s += "key map: " + self._key_map.__repr__() + "\n"
+        s += "opt parameters: " + self._opt_parameters.__repr__() + "\n"
+        s += "============================================" + "\n"
+        return s

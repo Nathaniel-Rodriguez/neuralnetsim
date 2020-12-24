@@ -42,6 +42,14 @@ class ValueTranslator:
             self._min = vmin
             self._max = vmax
 
+    def __repr__(self):
+        s = "======================="
+        s += "Key: " + self.key + '\n'
+        s += "Log: " + str(self._logged) + '\n'
+        s += "min: " + str(self._min) + '\n'
+        s += "max: " + str(self._max) + '\n'
+        return s
+
     def to_model(self, optimizer_value: float) -> float:
         """
         Converts an optimizer value into a model value.
