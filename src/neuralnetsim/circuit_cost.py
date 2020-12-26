@@ -171,11 +171,6 @@ def avalanche_cost(
                 0.0,
                 duration
             )[1]
-            # _, data_avalanche_sizes = avalanches_from_zero_activity(
-            #     data,
-            #     0.0,
-            #     training_manager.get_duration()
-            # )
             if len(model_avalanche_sizes) > 0:
                 d = wasserstein_distance(model_avalanche_sizes,
                                          data_avalanche_sizes)
@@ -470,16 +465,20 @@ def size_and_duration_cost(
     circuit_parameters.from_optimizer(x)
     with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
                         rng) as circuit:
-        if not circuit.run(
-                duration,
-                memory_guard={
-                    'duration': 1000.0,
-                    # 'max_spikes': 1250000000 / duration * 1000 # ~10GB
-                    'max_spikes': 8000  # ~10 spikes/ms
-                }
-        ):
-            print("\tMemory guard activated", flush=True)
-            return 0.0  # if expected number of spikes exceeds limit return
+        try:
+            if not circuit.run(
+                    duration,
+                    memory_guard={
+                        'duration': 1000.0,
+                        # 'max_spikes': 1250000000 / duration * 1000 # ~10GB
+                        'max_spikes': 8000  # ~10 spikes/ms
+                    }
+            ):
+                print("\tMemory guard activated", flush=True)
+                return 0.0  # if expected number of spikes exceeds limit return
+        except Exception as err:
+            print("FAILED TO RUN NEST. ERROR: ", err)
+            return 0.0
         model_spikes = circuit.get_spike_trains()
         num_spikes = neuralnetsim.spike_count(model_spikes)
         # if too few spikes, then isi can't be calculated, if too many
