@@ -184,7 +184,6 @@ dependencies:
   - pip:
     - hopcroftkarp==1.2.5
     - infomap==1.3.0
-    - linkcom==0.1
     - mpmath==1.1.0
     - persim==0.1.3
     - powerlaw==1.4.6
