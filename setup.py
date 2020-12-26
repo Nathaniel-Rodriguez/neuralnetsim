@@ -22,6 +22,7 @@ setup(name='neuralnetsim',
           'statsmodels>=0.12.0',
           'seaborn>=0.11.0',
           'PyNEST',
+          'nest-simulator>=2.20.1'
           'dask>=2.30.0',
           'distributed>=2.30.0',
           'pandas>=1.1.3',

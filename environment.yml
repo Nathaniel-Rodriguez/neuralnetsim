@@ -1,4 +1,4 @@
-name: netsim
+name: neuralnetsim
 channels:
   - conda-forge
   - defaults
@@ -13,6 +13,7 @@ dependencies:
   - backcall=0.2.0=pyh9f0ad1d_0
   - backports=1.0=py_2
   - backports.functools_lru_cache=1.6.1=py_0
+  - blas=1.0=mkl
   - bleach=3.2.1=pyh9f0ad1d_0
   - bokeh=2.2.3=py38h32f6830_0
   - boost=1.74.0=py38h1e42940_1
@@ -31,6 +32,7 @@ dependencies:
   - cytoolz=0.11.0=py38h1e0a361_1
   - dask=2.30.0=py_0
   - dask-core=2.30.0=py_0
+  - dask-mpi=2.21.0=py38h414b51d_1
   - decorator=4.4.2=py_0
   - defusedxml=0.6.0=py_0
   - distributed=2.30.0=py38h32f6830_1
@@ -45,6 +47,7 @@ dependencies:
   - imagesize=1.2.0=py_0
   - importlib-metadata=2.0.0=py_1
   - importlib_metadata=2.0.0=1
+  - intel-openmp=2020.2=254
   - ipykernel=5.3.4=py38h1cdfbd6_1
   - ipython=7.19.0=py38h81c977d_0
   - ipython_genutils=0.2.0=py_1
@@ -63,15 +66,14 @@ dependencies:
   - krb5=1.17.1=hfafb76e_3
   - lcms2=2.11=hbd6801e_0
   - ld_impl_linux-64=2.35=h769bd43_9
-  - libblas=3.8.0=17_openblas
-  - libcblas=3.8.0=17_openblas
+  - libblas=3.9.0=1_h6e990d7_netlib
+  - libcblas=3.9.0=3_h893e4fe_netlib
   - libedit=3.1.20191231=he28a2e2_2
   - libffi=3.2.1=he1b5a44_1007
   - libgcc-ng=9.3.0=h5dbcf3e_17
   - libgfortran-ng=7.5.0=hae1eefd_17
   - libgfortran4=7.5.0=hae1eefd_17
   - libgomp=9.3.0=h5dbcf3e_17
-  - liblapack=3.8.0=17_openblas
   - libllvm10=10.0.1=he513fc3_3
   - libopenblas=0.3.10=pthreads_hb3c22a3_5
   - libpng=1.6.37=hed695b0_2
@@ -87,17 +89,25 @@ dependencies:
   - matplotlib=3.3.2=0
   - matplotlib-base=3.3.2=py38h91b0d89_0
   - mistune=0.8.4=py38h1e0a361_1002
+  - mkl=2020.2=256
+  - mkl-service=2.3.0=py38h1e0a361_2
+  - mkl_fft=1.2.0=py38hab2c0dc_1
+  - mkl_random=1.2.0=py38hc5bc63f_1
+  - mpi=1.0=mpich
+  - mpi4py=3.0.3=py38h76063ec_2
+  - mpich=3.3.2=h846660c_5
   - msgpack-python=1.0.0=py38hbf85e49_2
   - nbclient=0.5.1=py_0
   - nbconvert=6.0.7=py38h32f6830_2
   - nbformat=5.0.8=py_0
   - ncurses=6.2=he1b5a44_1
   - nest-asyncio=1.4.2=pyhd8ed1ab_0
-  - nest-simulator=2.20.0=nompi_py38h425424f_106
+  - nest-simulator=2.20.1=nompi_py38hb9c15bb_100
   - networkx=2.5=py_0
   - notebook=6.1.4=py38h32f6830_1
   - numba=0.52.0=py38h51da96c_0
-  - numpy=1.19.2=py38hbc27379_1
+  - numpy=1.19.2=py38h54aff64_0
+  - numpy-base=1.19.2=py38hfa32c7d_0
   - olefile=0.46=py_0
   - openssh=8.4p1=h5957347_0
   - openssl=1.1.1i=h7f98852_0
@@ -131,7 +141,7 @@ dependencies:
   - readline=8.0=he28a2e2_2
   - requests=2.24.0=pyh9f0ad1d_0
   - scikit-learn=0.23.2=py38h5d63f67_3
-  - scipy=1.5.2=py38h8c5af15_1
+  - scipy=1.5.2=py38h0b6359f_0
   - seaborn=0.11.0=0
   - seaborn-base=0.11.0=py_0
   - send2trash=1.5.0=py_0
@@ -174,9 +184,10 @@ dependencies:
   - pip:
     - hopcroftkarp==1.2.5
     - infomap==1.3.0
+    - linkcom==0.1
+    - mpmath==1.1.0
     - persim==0.1.3
-    - pynest==nest-2.20.0
-    - ripser==0.6.0
-    - topology==nest-2.20.0
     - powerlaw==1.4.6
-
+    - pynest==nest-2.20.1
+    - ripser==0.6.0
+    - topology==nest-2.20.1
