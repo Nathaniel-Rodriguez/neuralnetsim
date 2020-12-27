@@ -4,6 +4,7 @@ __all__ = ["plot_slice",
            "plot_graph_strength_distributions",
            "plot_graph_nodal_strength_differences",
            "plot_weight_distribution",
+           "plot_collapsed_ccdf_distributions",
            "plot_graph_collapsed_strength_distributions",
            "plot_graph_collapsed_nodal_strength_differences"]
 
@@ -215,14 +216,22 @@ def plot_collapsed_ccdf_distributions(
         original_legend_label: str = "originals",
         comparison_legend_label: str = "comparison",
         save_dir: Path = None,
-        prefix: str = ""):
+        prefix: str = "",
+        color_match_comparison: bool = False
+):
     if save_dir is None:
         save_dir = Path.cwd()
-    for dist in comparison_dists:
+    for i, dist in enumerate(comparison_dists):
         ecdf = ECDF(collapse_function(dist), side='left')
         x = np.sort(collapse_function(dist))
         y = 1.0 - ecdf(x)
-        plt.plot(x, y, c="grey", alpha=0.05, lw=0.5)
+        if color_match_comparison:
+            plt.plot(x, y,
+                     c=seaborn.color_palette("tab10")[
+                         i % len(seaborn.color_palette("tab10"))],
+                     lw=1.0, ls='--')
+        else:
+            plt.plot(x, y, c="grey", alpha=0.05, lw=0.5)
 
     for i, original_dist in enumerate(original_dists):
         ecdf = ECDF(collapse_function(original_dist), side='left')
@@ -231,10 +240,16 @@ def plot_collapsed_ccdf_distributions(
         plt.plot(x, y,
                  c=seaborn.color_palette("tab10")[i % len(seaborn.color_palette("tab10"))],
                  lw=1.0, alpha=0.8)
-    alt_patch = mpatches.Patch(color='grey', label=comparison_legend_label)
-    orig_patch = mpatches.Patch(color=seaborn.color_palette("tab10")[0],
-                                label=original_legend_label)
-    plt.legend(handles=[orig_patch, alt_patch])
+    if color_match_comparison:
+        from matplotlib.lines import Line2D
+        custom_lines = [Line2D([0], [0], color='black', lw=1),
+                        Line2D([0], [0], color='black', lw=1, ls='--')]
+        plt.legend(custom_lines, [original_legend_label, comparison_legend_label])
+    else:
+        alt_patch = mpatches.Patch(color='grey', label=comparison_legend_label)
+        orig_patch = mpatches.Patch(color=seaborn.color_palette("tab10")[0],
+                                    label=original_legend_label)
+        plt.legend(handles=[orig_patch, alt_patch])
     plt.xscale(xscale)
     plt.yscale(yscale)
     plt.xlabel(xlabel)
