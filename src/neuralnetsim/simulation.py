@@ -13,14 +13,14 @@ from typing import Union
 
 
 def simulation_worker(
-        x0,
+        graph: nx.DiGraph,
+        rng: np.random.RandomState,
+        x0: np.ndarray,
         parameter_path: Path,
         circuit_type: Union[Type[neuralnetsim.DistributionCircuit],
                             Type[neuralnetsim.NeuralCircuit]],
-        graph: nx.DiGraph,
-        rng: np.random.RandomState,
-        duration,
-        kernel_parameters
+        duration: float,
+        kernel_parameters: Dict
 ) -> Dict[int, np.ndarray]:
     """
 
@@ -49,7 +49,7 @@ def simulate_model(
         fitted_graph_path: Path,
         name: str,
         client: Client,
-        duration: int,
+        duration: float,
         seed: int,
         circuit_type: Type,
         save_path: Path,
@@ -77,20 +77,15 @@ def simulate_model(
     rng = np.random.RandomState(seed)
     sims = client.map(
         simulation_worker,
-        [
-            {
-                'x0': x0,
-                'parameter_path': parameter_path,
-                'circuit_type': circuit_type,
-                'graph': graph,
-                'rng': np.random.RandomState(rng.randint(1, 2**31)),
-                'duration': duration,
-                'kernel_parameters': kernel_parameters
-            }
-
-            for graph in range(fitted_graph_results['graphs'])
-        ],
-        pure=False
+        [graph for graph in fitted_graph_results['graphs']],
+        [np.random.RandomState(rng.randint(1, 2**31))
+         for _ in range(len(fitted_graph_results['graphs']))],
+        pure=False,
+        x0=x0,
+        parameter_path=parameter_path,
+        circuit_type=circuit_type,
+        duration=duration,
+        kernel_parameters=kernel_parameters
     )
     data = client.gather(sims)
     neuralnetsim.save(
