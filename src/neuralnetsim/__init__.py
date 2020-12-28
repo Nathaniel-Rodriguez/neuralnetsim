@@ -20,3 +20,4 @@ from neuralnetsim.network_fitting import *
 from neuralnetsim.circuit_cost import *
 from neuralnetsim.spike_plots import *
 from neuralnetsim.simulation import *
+from neuralnetsim.dynamical_plots import *

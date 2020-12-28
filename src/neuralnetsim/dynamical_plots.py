@@ -14,7 +14,7 @@ from typing import List
 
 
 def plot_power_law_distributions(
-        distributions: np.ndarray,
+        distributions: List[np.ndarray],
         distribution_labels: List[str],
         xlabel: str = "",
         ylabel: str = "",

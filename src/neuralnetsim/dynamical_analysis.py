@@ -13,7 +13,8 @@ __all__ = ["spike_count",
            "generate_persistence_diagrams",
            "diagram_distances",
            "firing_rate_distribution",
-           "process_sim_results"]
+           "process_sim_results",
+           "agg_sim_avalanche_distributions"]
 
 
 import neuralnetsim
@@ -493,7 +494,7 @@ def agg_sim_avalanche_distributions(
     mus = graph_data['parameters']['modularities']
     sizes = [np.zeros(0) for _ in mus]
     durations = [np.zeros(0) for _ in mus]
-    for mu, i in enumerate(mus):
+    for i, mu in enumerate(mus):
         for j in range(len(graph_data['graphs'])):
             if graph_data['target_modularities'][j] == mu:
                 bins_size = float(np.mean(network_isi_distribution(

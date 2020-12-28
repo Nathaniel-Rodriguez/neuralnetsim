@@ -22,6 +22,7 @@ Submodules
    neuralnetsim.data_loader
    neuralnetsim.data_management
    neuralnetsim.dynamical_analysis
+   neuralnetsim.dynamical_plots
    neuralnetsim.energy
    neuralnetsim.network_analysis
    neuralnetsim.network_fitting
