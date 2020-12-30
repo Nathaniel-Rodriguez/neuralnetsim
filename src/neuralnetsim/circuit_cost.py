@@ -16,7 +16,7 @@ import umap
 from neuralnetsim import ArrayTranslator
 from neuralnetsim import TrialManager
 from neuralnetsim import CircuitParameters
-from neuralnetsim import coincidence_factor
+from neuralnetsim import adjusted_coincidence_factor
 from neuralnetsim import TrainingManager
 from neuralnetsim import CircuitManager
 from neuralnetsim import NeuralCircuit
@@ -26,6 +26,7 @@ from neuralnetsim import DistributionCircuit
 from neuralnetsim import InhibCircuit
 from scipy.stats import wasserstein_distance
 from typing import Dict
+from typing import Tuple
 from typing import List
 
 
@@ -66,7 +67,7 @@ def circuit_cost(x: np.ndarray,
     with TrialManager(kernel_parameters, circuit_parameters, data) as circuit:
         circuit.run(run_duration)
         model_spikes = circuit.get_spike_trains()
-        costs = [coincidence_factor([model_spikes[node]], data[node],
+        costs = [adjusted_coincidence_factor([model_spikes[node]], data[node],
                                     run_duration, coincidence_window)
                  for node in model_spikes.keys()]
 
@@ -113,7 +114,7 @@ def training_cost(x: np.ndarray,
         try:
             circuit.run(training_manager.get_duration())
             model_spikes = circuit.get_spike_trains()
-            costs = [coincidence_factor([model_spikes[node]], data[node],
+            costs = [adjusted_coincidence_factor([model_spikes[node]], data[node],
                                         training_manager.get_duration(),
                                         coincidence_window)
                      for node in model_spikes.keys()]
@@ -513,13 +514,14 @@ def size_and_duration_cost(
 
 def duration_cost(
         x: np.ndarray,
-        circuit_parameters: DistributionParameters,
+        circuit_parameters,
         kernel_parameters: Dict,
         duration: float,
         data_avalanche_durations: np.ndarray,
         circuit_choice,
-        rng: np.random.RandomState,
-        kernel_seeder: np.random.RandomState = None) -> float:
+        kernel_seeder: np.random.RandomState = None,
+        **kwargs
+) -> float:
     """
     Calculates the cost for a given parameter array. Uses the Wasserstein
     distance between model avalanche size distribution and data avalanche size
@@ -533,7 +535,7 @@ def duration_cost(
                                   'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
     circuit_parameters.from_optimizer(x)
     with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
-                        rng) as circuit:
+                        **kwargs) as circuit:
         if not circuit.run(
                 duration,
                 memory_guard={
