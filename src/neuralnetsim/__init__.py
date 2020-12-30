@@ -1,3 +1,4 @@
+from neuralnetsim.coincidence_factor import *
 from neuralnetsim.sliceops import *
 from neuralnetsim.data_loader import *
 from neuralnetsim.data_management import *
@@ -15,7 +16,6 @@ from neuralnetsim.annealing import *
 from neuralnetsim.optimizer_net import *
 from neuralnetsim.circuit import *
 from neuralnetsim.scmaes import *
-from neuralnetsim.coincidence_factor import *
 from neuralnetsim.network_fitting import *
 from neuralnetsim.circuit_cost import *
 from neuralnetsim.spike_plots import *
