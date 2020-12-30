@@ -76,13 +76,29 @@ class NeuralCircuit:
                              'all_to_all',
                              synaptic_params)
 
-    def run(self, duration: float) -> None:
+    def run(self, duration: float, memory_guard: Dict = None) -> bool:
         """
         Prompts the NEST kernel to run the simulation.
 
         :param duration: How long to run the simulation in ms.
+        :param memory_guard: Does an initial simulation run to check if too many
+            spikes are going to be produced. If a threshold is exceeded then
+            the full simulation is cancelled and False is returned. Default is
+            None. Expects a dictionary with keys 'duration' and 'max_spikes'.
+            The first specifies how long the sample run lasts and the second is
+            the spike cap.
         """
-        nest.Simulate(duration)
+        if memory_guard is None:
+            nest.Simulate(duration)
+            return True
+        else:
+            with nest.RunManager():
+                nest.Run(memory_guard['duration'])
+                if spike_count(self.get_spike_trains()) > memory_guard['max_spikes']:
+                    return False
+                else:
+                    nest.Run(duration - memory_guard['duration'])
+                    return True
 
     def get_spike_trains(self) -> Dict[int, np.ndarray]:
         """
