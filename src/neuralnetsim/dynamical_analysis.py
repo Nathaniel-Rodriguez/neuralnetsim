@@ -14,7 +14,9 @@ __all__ = ["spike_count",
            "diagram_distances",
            "firing_rate_distribution",
            "process_sim_results",
-           "agg_sim_avalanche_distributions"]
+           "agg_sim_avalanche_distributions",
+           "effective_flow",
+           "bridge_flow"]
 
 
 import neuralnetsim
@@ -24,7 +26,6 @@ import umap
 import ripser
 import statsmodels.tsa.stattools as stats
 import pandas as pd
-import powerlaw
 from collections import Counter
 from pathlib import Path
 from persim import sliced_wasserstein
@@ -45,6 +46,52 @@ def spike_count(data: Dict[int, np.ndarray]) -> int:
     for arr in data.values():
         num_spikes += len(arr)
     return num_spikes
+
+
+def effective_flow(
+        data: Dict[int, np.ndarray],
+        graph: nx.DiGraph,
+        neuron_id: int,
+        comm_id: int,
+        coincidence_window: float,
+        duration: float,
+        com_key: str
+) -> float:
+    """
+
+    :param data:
+    :param graph:
+    :param neuron_id:
+    :param comm_id:
+    :param coincidence_window:
+    :param duration:
+    :param com_key:
+    :return:
+    """
+    down_stream_neurons = list(nx.neighbors(graph, neuron_id))
+    down_stream_neurons_in_com = [
+        neuron for neuron in down_stream_neurons
+        if graph.nodes[neuron][com_key] == comm_id
+    ]
+    com_spikes = np.array(
+        [spike_time
+         for neuron in down_stream_neurons_in_com
+         for spike_time in data[neuron]]
+    )
+    com_spikes.sort()
+
+    return neuralnetsim.flow_factor(
+        data[neuron_id], com_spikes, duration, coincidence_window)
+
+
+def bridge_flow(
+        data: Dict[int, np.ndarray],
+        graph: nx.DiGraph,
+        coincidence_window: float,
+        duration: float,
+        com_key: str
+) -> float:
+    pass
 
 
 def firing_rate_distribution(data: Dict[int, np.ndarray],
@@ -354,6 +401,9 @@ def process_sim_results(
         graphs_path: Path,
         sim_path: Path
 ) -> pd.DataFrame:
+    ######### need to make 1 entry per DATA POINT, not 1 per set of datapoints
+    ##### coms values need their own data points
+    ### slope stuff should be in their own pd
     graph_data = neuralnetsim.load(graphs_path)
     sim_data = neuralnetsim.load(sim_path)
     assert len(graph_data['graphs']) == len(sim_data['spike_data'])
@@ -377,98 +427,108 @@ def process_sim_results(
         trials.append(graph_data['trials'][i])
         durations.append(sim_data['duration'])
 
-        # network wide stats
-        bins_size = float(np.mean(network_isi_distribution(sim_data['spike_data'][i])))
-        av_times, av_sizes = avalanches_from_zero_activity(
-            sim_data['spike_data'][i],
-            0.0,
-            sim_data['duration'],
-            bins_size,
-            True
-        )
-        av_durations = av_times[:, 1] - av_times[:, 0]
-        sfit = powerlaw.Fit(av_sizes, discrete=True)
-        av_size_slope.append(sfit.alpha)
-        av_truncated_size_slope.append(sfit.truncated_power_law.parameter1)
-        dfit = powerlaw.Fit(av_durations, discrete=True)
-        av_duration_slope.append(dfit.alpha)
-        av_truncated_duration_slope.append(dfit.truncated_power_law.parameter1)
-        av_mean_sizes.append(np.mean(av_sizes))
-        av_mean_durations.append(np.mean(av_durations) * bins_size)
-
-        # collected community data stats
-        node_coms = nx.get_node_attributes(graph_data['graphs'][i], "level1")
-        largest_coms = largest_community(node_coms, 3)
-        com1_spikes = {node: sim_data['spike_data'][i][node]
-                       for node, com in node_coms.items()
-                       if com == largest_coms[0][0]}
-        if len(largest_coms) > 1:
-            com2_spikes = {node: sim_data['spike_data'][i][node]
-                           for node, com in node_coms.items()
-                           if com == largest_coms[1][0]}
-        else:
-            com2_spikes = {}
-        if len(largest_coms) > 2:
-            com3_spikes = {node: sim_data['spike_data'][i][node]
-                           for node, com in node_coms.items()
-                           if com == largest_coms[2][0]}
-        else:
-            com3_spikes = {}
-
-        # community stats
-        if len(com1_spikes) >= 4:
-            bins_size = float(np.mean(network_isi_distribution(com1_spikes)))
+        if spike_count(sim_data['spike_data'][i]) > 10:
+            # network wide stats
+            bins_size = float(np.mean(network_isi_distribution(sim_data['spike_data'][i])))
             av_times, av_sizes = avalanches_from_zero_activity(
-                com1_spikes,
+                sim_data['spike_data'][i],
                 0.0,
                 sim_data['duration'],
                 bins_size,
-                False
+                True
             )
             av_durations = av_times[:, 1] - av_times[:, 0]
-            av_com1_mean_sizes.append(np.mean(av_sizes))
-            av_com1_mean_durations.append(np.mean(av_durations))
+            # sfit = powerlaw.Fit(av_sizes, discrete=True)
+            # av_size_slope.append(sfit.alpha)
+            # av_truncated_size_slope.append(sfit.truncated_power_law.parameter1)
+            # dfit = powerlaw.Fit(av_durations, discrete=True)
+            # av_duration_slope.append(dfit.alpha)
+            # av_truncated_duration_slope.append(dfit.truncated_power_law.parameter1)
+            av_mean_sizes.append(np.mean(av_sizes))
+            av_mean_durations.append(np.mean(av_durations) * bins_size)
+
+            # collected community data stats
+            node_coms = nx.get_node_attributes(graph_data['graphs'][i], "level1")
+            largest_coms = largest_community(node_coms, 3)
+            com1_spikes = {node: sim_data['spike_data'][i][node]
+                           for node, com in node_coms.items()
+                           if com == largest_coms[0][0]}
+            if len(largest_coms) > 1:
+                com2_spikes = {node: sim_data['spike_data'][i][node]
+                               for node, com in node_coms.items()
+                               if com == largest_coms[1][0]}
+            else:
+                com2_spikes = {}
+            if len(largest_coms) > 2:
+                com3_spikes = {node: sim_data['spike_data'][i][node]
+                               for node, com in node_coms.items()
+                               if com == largest_coms[2][0]}
+            else:
+                com3_spikes = {}
+
+            # community stats
+            if len(com1_spikes) >= 4 and spike_count(com1_spikes) > 10:
+                bins_size = float(np.mean(network_isi_distribution(com1_spikes)))
+                av_times, av_sizes = avalanches_from_zero_activity(
+                    com1_spikes,
+                    0.0,
+                    sim_data['duration'],
+                    bins_size,
+                    False
+                )
+                av_durations = av_times[:, 1] - av_times[:, 0]
+                av_com1_mean_sizes.append(np.mean(av_sizes))
+                av_com1_mean_durations.append(np.mean(av_durations))
+            else:
+                av_com1_mean_sizes.append(0.0)
+                av_com1_mean_durations.append(0.0)
+
+            if len(com2_spikes) >= 4 and spike_count(com2_spikes) > 10:
+                bins_size = float(np.mean(network_isi_distribution(com2_spikes)))
+                av_times, av_sizes = avalanches_from_zero_activity(
+                    com2_spikes,
+                    0.0,
+                    sim_data['duration'],
+                    bins_size,
+                    False
+                )
+                av_durations = av_times[:, 1] - av_times[:, 0]
+                av_com2_mean_sizes.append(np.mean(av_sizes))
+                av_com2_mean_durations.append(np.mean(av_durations))
+            else:
+                av_com2_mean_sizes.append(0.0)
+                av_com2_mean_durations.append(0.0)
+
+            if len(com3_spikes) >= 4 and spike_count(com3_spikes) > 10:
+                bins_size = float(np.mean(network_isi_distribution(com3_spikes)))
+                av_times, av_sizes = avalanches_from_zero_activity(
+                    com3_spikes,
+                    0.0,
+                    sim_data['duration'],
+                    bins_size,
+                    False
+                )
+                av_durations = av_times[:, 1] - av_times[:, 0]
+                av_com3_mean_sizes.append(np.mean(av_sizes))
+                av_com3_mean_durations.append(np.mean(av_durations))
+            else:
+                av_com3_mean_sizes.append(0.0)
+                av_com3_mean_durations.append(0.0)
         else:
+            av_mean_sizes.append(0.0)
+            av_mean_durations.append(0.0)
             av_com1_mean_sizes.append(0.0)
             av_com1_mean_durations.append(0.0)
-
-        if len(com2_spikes) >= 4:
-            bins_size = float(np.mean(network_isi_distribution(com2_spikes)))
-            av_times, av_sizes = avalanches_from_zero_activity(
-                com2_spikes,
-                0.0,
-                sim_data['duration'],
-                bins_size,
-                False
-            )
-            av_durations = av_times[:, 1] - av_times[:, 0]
-            av_com2_mean_sizes.append(np.mean(av_sizes))
-            av_com2_mean_durations.append(np.mean(av_durations))
-        else:
             av_com2_mean_sizes.append(0.0)
             av_com2_mean_durations.append(0.0)
-
-        if len(com3_spikes) >= 4:
-            bins_size = float(np.mean(network_isi_distribution(com3_spikes)))
-            av_times, av_sizes = avalanches_from_zero_activity(
-                com3_spikes,
-                0.0,
-                sim_data['duration'],
-                bins_size,
-                False
-            )
-            av_durations = av_times[:, 1] - av_times[:, 0]
-            av_com3_mean_sizes.append(np.mean(av_sizes))
-            av_com3_mean_durations.append(np.mean(av_durations))
-        else:
             av_com3_mean_sizes.append(0.0)
             av_com3_mean_durations.append(0.0)
 
     return pd.DataFrame({
-        'size slope': av_size_slope,
-        'truncated size slope': av_truncated_size_slope,
-        'duration slope': av_duration_slope,
-        'truncated duration slope': av_truncated_duration_slope,
+        # 'size slope': av_size_slope,
+        # 'truncated size slope': av_truncated_size_slope,
+        # 'duration slope': av_duration_slope,
+        # 'truncated duration slope': av_truncated_duration_slope,
         'size': av_mean_sizes,
         'duration': av_mean_durations,
         'com 1 size': av_com1_mean_sizes,
@@ -486,7 +546,7 @@ def process_sim_results(
 def agg_sim_avalanche_distributions(
         graphs_path: Path,
         sim_path: Path,
-) -> Tuple[List[np.ndarray], List[np.ndarray], List[str]]:
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[float]]:
     graph_data = neuralnetsim.load(graphs_path)
     sim_data = neuralnetsim.load(sim_path)
     assert len(graph_data['graphs']) == len(sim_data['spike_data'])
@@ -497,17 +557,21 @@ def agg_sim_avalanche_distributions(
     for i, mu in enumerate(mus):
         for j in range(len(graph_data['graphs'])):
             if graph_data['target_modularities'][j] == mu:
-                bins_size = float(np.mean(network_isi_distribution(
-                    sim_data['spike_data'][i])))
-                av_times, av_sizes = avalanches_from_zero_activity(
-                    sim_data['spike_data'][i],
-                    0.0,
-                    sim_data['duration'],
-                    bins_size,
-                    True
-                )
-                av_durations = av_times[:, 1] - av_times[:, 0]
-                sizes[i] = np.concatenate((sizes[i], av_sizes))
-                durations[i] = np.concatenate((durations[i], av_durations))
+                # no meaningful isi if circuit not active (10 is arbitrary)
+                if spike_count(sim_data['spike_data'][i]) > 10:
+                    bins_size = float(np.mean(network_isi_distribution(
+                        sim_data['spike_data'][i])))
+                    av_times, av_sizes = avalanches_from_zero_activity(
+                        sim_data['spike_data'][i],
+                        0.0,
+                        sim_data['duration'],
+                        bins_size,
+                        True
+                    )
+                    av_durations = av_times[:, 1] - av_times[:, 0]
+                    sizes[i] = np.concatenate((sizes[i], av_sizes))
+                    durations[i] = np.concatenate((durations[i], av_durations))
+                else:
+                    print("No spikes for ", mu)
 
     return sizes, durations, mus

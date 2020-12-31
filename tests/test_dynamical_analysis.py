@@ -1,6 +1,7 @@
 import unittest
 import neuralnetsim
 import numpy as np
+import networkx as nx
 
 
 class TestDynamicalAnalysis(unittest.TestCase):
@@ -91,3 +92,19 @@ class TestDynamicalAnalysis(unittest.TestCase):
     def test_get_acorr_time(self):
         data = np.array([1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0])
         self.assertEqual(neuralnetsim.get_acorr_time(data), 1)
+
+    def test_effective_flow(self):
+        graph = nx.DiGraph()
+        graph.add_edge(1, 2)
+        graph.add_edge(1, 3)
+        graph.add_edge(2, 4)
+        nx.set_node_attributes(
+            graph, {1: 1, 2: 2, 3: 2, 4: 2}, name="com")
+        data = {
+            1: np.array([0.1, 1.0, 2.0]),
+            2: np.array([0.2, 1.1, 2.1]),
+            3: np.array([0.21, 1.12, 2.2]),
+            4: np.array([0.1, 0.5, 2.9])
+        }
+        ef = neuralnetsim.effective_flow(data, graph, 1, 2, 0.3, 4, "com")
+        self.assertAlmostEqual(ef, 1. + 1/3)
