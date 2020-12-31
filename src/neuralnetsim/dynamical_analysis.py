@@ -16,7 +16,8 @@ __all__ = ["spike_count",
            "process_sim_results",
            "agg_sim_avalanche_distributions",
            "effective_flow",
-           "bridge_flow"]
+           "bridge_flows",
+           "process_bridge_results"]
 
 
 import neuralnetsim
@@ -26,6 +27,7 @@ import umap
 import ripser
 import statsmodels.tsa.stattools as stats
 import pandas as pd
+from distributed import Client
 from collections import Counter
 from pathlib import Path
 from persim import sliced_wasserstein
@@ -80,18 +82,102 @@ def effective_flow(
     )
     com_spikes.sort()
 
-    return neuralnetsim.flow_factor(
+    ef = neuralnetsim.flow_factor(
         data[neuron_id], com_spikes, duration, coincidence_window)
+    # if ef > 100.0:
+    #     print("\n============================\nFlow ",
+    #           ef, 'num neighbors', down_stream_neurons_in_com,
+    #           'num com spikes', len(com_spikes),
+    #           'num n spikes', len(data[neuron_id]),
+    #           'coincidence', neuralnetsim.causal_detector(data[neuron_id], com_spikes, coincidence_window),
+    #           'duration', duration,
+    #           'window', coincidence_window,
+    #           "\n============================\n",
+    #           flush=True)
+    return ef
 
 
-def bridge_flow(
+# def community_flow(
+#         data: Dict[int, np.ndarray],
+#         graph: nx.DiGraph,
+#         comm_source: int,
+#         comm_sink: int,
+#         coincidence_window: float,
+#         duration: float,
+#         com_key: str
+# ) -> float:
+#     """
+#
+#     :param data:
+#     :param graph:
+#     :param neuron_id:
+#     :param comm_id:
+#     :param coincidence_window:
+#     :param duration:
+#     :param com_key:
+#     :return:
+#     """
+#     down_stream_neurons = list(nx.neighbors(graph, neuron_id))
+#     down_stream_neurons_in_com = [
+#         neuron for neuron in down_stream_neurons
+#         if graph.nodes[neuron][com_key] == comm_id
+#     ]
+#     com_spikes = np.array(
+#         [spike_time
+#          for neuron in down_stream_neurons_in_com
+#          for spike_time in data[neuron]]
+#     )
+#     com_spikes.sort()
+#
+#     cf = neuralnetsim.flow_factor(
+#         data[neuron_id], com_spikes, duration, coincidence_window)
+#     return cf
+
+
+def find_bridges(
+        graph: nx.DiGraph,
+        com_key: str
+) -> List[Tuple[int, int]]:
+    """
+
+    :param graph:
+    :param com_key:
+    :return: List of tuples of bridge neurons with the corresponding community
+        they are a bridge for. Neurons can appear multiple times if they are
+        bridges for multiple communities. First index is neuron id, second
+        index of tuple is community id.
+    """
+    bridge_nodes = []
+    for node_i in graph.nodes:
+        neighbors = nx.neighbors(graph, node_i)
+        for neighbor in neighbors:
+            if graph.nodes[node_i][com_key] != graph.nodes[neighbor][com_key]:
+                bridge_nodes.append((node_i, graph.nodes[neighbor][com_key]))
+    return bridge_nodes
+
+
+def bridge_flows(
         data: Dict[int, np.ndarray],
         graph: nx.DiGraph,
         coincidence_window: float,
         duration: float,
         com_key: str
-) -> float:
-    pass
+) -> np.ndarray:
+    """
+
+    :param data:
+    :param graph:
+    :param coincidence_window:
+    :param duration:
+    :param com_key:
+    :return:
+    """
+    bridge_nodes = find_bridges(graph, com_key)
+    flows = []
+    for bridge, com in bridge_nodes:
+        flows.append(effective_flow(
+            data, graph, bridge, com, coincidence_window, duration, com_key))
+    return np.array(flows)
 
 
 def firing_rate_distribution(data: Dict[int, np.ndarray],
@@ -395,6 +481,55 @@ def largest_community(
         nth_largest: int
 ):
     return Counter(node_communities.values()).most_common(nth_largest)
+
+
+def bridge_worker(
+        graph,
+        data,
+        trial,
+        mu,
+        duration,
+        causal_window,
+        com_key
+):
+    bfs = neuralnetsim.bridge_flows(
+            data,
+            graph,
+            causal_window,
+            duration,
+            com_key)
+    bf = np.mean(bfs)
+    sdbf = np.std(bfs)
+    return {'max duration': duration,
+            'trial': trial,
+            r'$\mu$': mu,
+            'flow': bf,
+            'sdflow': sdbf
+            }, bfs
+
+
+def process_bridge_results(
+        graphs_path: Path,
+        sim_path: Path,
+        client: Client,
+        causal_window,
+) -> pd.DataFrame:
+    graph_data = neuralnetsim.load(graphs_path)
+    sim_data = neuralnetsim.load(sim_path)
+    assert len(graph_data['graphs']) == len(sim_data['spike_data'])
+    results = client.map(
+        bridge_worker,
+        [graph for graph in graph_data['graphs']],
+        [data for data in sim_data['spike_data']],
+        [trial for trial in graph_data['trials']],
+        [mu for mu in graph_data['target_modularities']],
+        causal_window=causal_window,
+        duration=sim_data['duration'],
+        com_key="level1",
+        pure=False
+    )
+    stats, bfs = zip(*client.gather(results))
+    return pd.DataFrame(stats), bfs
 
 
 def process_sim_results(

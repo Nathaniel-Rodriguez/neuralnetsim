@@ -130,7 +130,7 @@ def adjusted_coincidence_factor(model_spike_times: List[np.ndarray],
                                                         coincidence_window)
                                    for spikes in model_spike_times])
         data_spike_rate = data_num_spikes / time_window
-        expected_coincidence = 2.0 * data_spike_rate * coincidence_window * data_num_spikes
+        expected_coincidence = 2.0 * model_spike_rate * coincidence_window * data_num_spikes
         norm = 2.0 / (1. - 2. * coincidence_window * model_spike_rate)
         cf = 2.0 * abs((data_spike_rate - model_spike_rate) / data_spike_rate) \
                 - ((avg_coincidence - expected_coincidence)
@@ -143,32 +143,30 @@ def adjusted_coincidence_factor(model_spike_times: List[np.ndarray],
 
 def flow_factor(model_spike_times: np.ndarray,
                 data_spike_times: np.ndarray,
-                time_window: float,
+                duration: float,
                 coincidence_window: float = 5.0) -> float:
     """
     Calculates the flow factor
 
     :param model_spike_times: A 1-D arrays with model spike times.
     :param data_spike_times: A 1-D array of data spike times.
-    :param time_window: The time window of the experiment.
+    :param duration: The time window of the experiment.
     :param coincidence_window: How long after a spike has to be in order
         to be considered coincident.
     :return: The flow factor
     """
     model_num_spikes = len(model_spike_times)
     data_num_spikes = len(data_spike_times)
-    # model_spike_rate = model_num_spikes / time_window
+    model_spike_rate = model_num_spikes / duration
     if model_num_spikes < 1:
         ff = 0.0
     elif data_num_spikes > 0:
         coincidence = causal_detector(model_spike_times,
                                       data_spike_times,
                                       coincidence_window)
-        data_spike_rate = data_num_spikes / time_window
-        expected_coincidence = data_spike_rate * coincidence_window * data_num_spikes
-        norm = 2.0 / (1. - coincidence_window * data_spike_rate)
+        expected_coincidence = model_spike_rate * coincidence_window * data_num_spikes
         ff = ((coincidence - expected_coincidence)
-              / (model_num_spikes + data_num_spikes)) * norm
+              / (model_num_spikes + data_num_spikes))
     else:
         ff = 0.0
 

@@ -107,4 +107,9 @@ class TestDynamicalAnalysis(unittest.TestCase):
             4: np.array([0.1, 0.5, 2.9])
         }
         ef = neuralnetsim.effective_flow(data, graph, 1, 2, 0.3, 4, "com")
-        self.assertAlmostEqual(ef, 1. + 1/3)
+        self.assertGreaterEqual(
+            ef,
+            neuralnetsim.flow_factor([0.1, 1.0, 2.0],
+                                     [0.2, 0.21, 1.1, 1.12, 2.1, 2.2],
+                                     0.3, 4)
+        )
