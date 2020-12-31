@@ -135,6 +135,14 @@ class CircuitParameters:
         else:
             raise RuntimeError
 
+    def set_par(self, par_key, value):
+        if par_key in self.synaptic_parameters:
+            self.synaptic_parameters[par_key] = value
+        elif par_key in self.global_parameters:
+            self.global_parameters[par_key] = value
+        elif par_key in self.noise_parameters:
+            self.noise_parameters[par_key] = value
+
 
 class DistributionParameters:
     """"""
@@ -304,3 +312,13 @@ class DistributionParameters:
         s += "opt parameters: " + self._opt_parameters.__repr__() + "\n"
         s += "============================================" + "\n"
         return s
+
+    def set_par(self, par_key, value):
+        if par_key in self.synaptic_parameters:
+            self.synaptic_parameters[par_key] = value
+        elif par_key in self.global_parameters:
+            self.global_parameters[par_key] = value
+        elif par_key in self.neuron_parameters:
+            self.neuron_parameters[par_key] = value
+        elif par_key in self.noise_parameters:
+            self.noise_parameters[par_key] = value

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Type
 from typing import Dict
 from typing import Any
+from typing import List
 from typing import Union
 
 
@@ -91,6 +92,98 @@ def simulate_model(
     neuralnetsim.save(
         {
             'spike_data': data,
+            'seed': seed,
+            'name': name,
+            'duration': duration,
+            'kernel_parameters': kernel_parameters
+        },
+        save_path
+    )
+
+
+def grid_worker(
+        graph: nx.DiGraph,
+        rng: np.random.RandomState,
+        par: float,
+        x0: np.ndarray,
+        par_key: str,
+        parameter_path: Path,
+        circuit_type: Union[Type[neuralnetsim.DistributionCircuit],
+                            Type[neuralnetsim.NeuralCircuit]],
+        duration: float,
+        kernel_parameters: Dict
+) -> Dict[int, np.ndarray]:
+    """
+
+
+    :param x0:
+    :param parameter_path:
+    :param circuit_type:
+    :param graph:
+    :param rng:
+    :param duration:
+    :param kernel_parameters:
+    :return:
+    """
+    circuit_parameters = neuralnetsim.load(parameter_path)
+    circuit_parameters.network = graph
+    circuit_parameters.from_optimizer(x0)
+    circuit_parameters.set_par(par_key, par)
+    with neuralnetsim.CircuitManager(circuit_type, kernel_parameters,
+                                     circuit_parameters, rng) as circuit:
+        circuit.run(duration)
+        return circuit.get_spike_trains()
+
+
+def simulate_grid(
+        x0,
+        par_range: List[float],
+        par_key: str,
+        parameter_path: Path,
+        fitted_graph_path: Path,
+        name: str,
+        client: Client,
+        duration: float,
+        seed: int,
+        circuit_type: Type,
+        save_path: Path,
+        kernel_parameters: Dict[str, Any] = None,
+):
+    if kernel_parameters is None:
+        kernel_parameters = {}
+    fitted_graph_results = neuralnetsim.load(fitted_graph_path)
+    rng = np.random.RandomState(seed)
+    num_graphs = range(len(fitted_graph_results['graphs']))
+    sims = client.map(
+        grid_worker,
+        [graph
+         for _ in par_range
+         for graph in fitted_graph_results['graphs']],
+        [np.random.RandomState(rng.randint(1, 2**31))
+         for _ in par_range
+         for _ in num_graphs],
+        [par for par in par_range
+         for _ in num_graphs],
+        pure=False,
+        x0=x0,
+        par_key=par_key,
+        parameter_path=parameter_path,
+        circuit_type=circuit_type,
+        duration=duration,
+        kernel_parameters=kernel_parameters
+    )
+    data = client.gather(sims)
+    neuralnetsim.save(
+        {
+            'spike_data': data,
+            'original_graph': fitted_graph_results['original'],
+            'graphs': [graph for _ in par_range
+                       for graph in fitted_graph_results['graphs']],
+            'target_modularities':
+                [mu for _ in par_range
+                 for mu in fitted_graph_results['target_modularities']],
+            'grid_par': [par for par in par_range for _ in num_graphs],
+            'par_key': par_key,
             'seed': seed,
             'name': name,
             'duration': duration,
