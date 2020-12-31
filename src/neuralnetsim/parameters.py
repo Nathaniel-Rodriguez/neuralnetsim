@@ -9,6 +9,7 @@ from pathlib import Path
 from neuralnetsim import get_translator
 from neuralnetsim import ValueTranslator
 from neuralnetsim import DistributionTranslator
+from neuralnetsim import ArrayTranslator
 from typing import Dict
 from typing import Any
 from typing import List
@@ -29,7 +30,8 @@ class CircuitParameters:
                  static_noise_parameters: Dict[str, Any] = None,
                  static_global_parameters: Dict[str, Any] = None,
                  nodes: List[int] = None,
-                 homogeneous_neurons: bool = False):
+                 homogeneous_neurons: bool = False,
+                 translator: ArrayTranslator = None):
         """
         :param graph: Network associated with the parameterization.
         :param neuron_model: A NEST neuron model.
@@ -80,6 +82,7 @@ class CircuitParameters:
             self.global_parameters = {}
         else:
             self.global_parameters = static_global_parameters
+        self._translator = translator
 
     def extend_synaptic_parameters(self, parameters: Dict[str, Any]):
         self.synaptic_parameters.update(parameters)
@@ -111,6 +114,26 @@ class CircuitParameters:
         :return: True if neurons share parameters, else False.
         """
         return self._homogeneous_neurons
+
+    def required_array_size(self) -> int:
+        """
+        :return: Size of the optimizer array required in order to satisfy the
+            parameter conversion to models.
+        """
+        if self._translator is not None:
+            return self._translator.required_array_size()
+        else:
+            raise RuntimeError
+
+    def from_optimizer(self, array: np.ndarray):
+        if self._translator is not None:
+            self._translator.from_optimizer(array)
+            self.extend_global_parameters(self._translator.global_parameters)
+            self.extend_neuron_parameters(self._translator.neuron_parameters)
+            self.extend_synaptic_parameters(self._translator.synapse_parameters)
+            self.extend_noise_parameters(self._translator.noise_parameters)
+        else:
+            raise RuntimeError
 
 
 class DistributionParameters:
