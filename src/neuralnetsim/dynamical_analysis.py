@@ -440,7 +440,7 @@ def largest_community(
 def bridge_worker(
         graph,
         data,
-        trial,
+        par,
         mu,
         duration,
         causal_window,
@@ -455,35 +455,33 @@ def bridge_worker(
     bf = np.mean(bfs)
     sdbf = np.std(bfs)
     return {'max duration': duration,
-            'trial': trial,
             r'$\mu$': mu,
             'flow': bf,
-            'sdflow': sdbf
-            }, bfs
+            'sdflow': sdbf,
+            'grid_par': par,
+            'activity': neuralnetsim.spike_count(data) / duration / nx.number_of_nodes(graph)
+            }
 
 
 def process_bridge_results(
-        graphs_path: Path,
         sim_path: Path,
         client: Client,
-        causal_window,
+        causal_window: float,
+        com_key: str
 ) -> pd.DataFrame:
-    graph_data = neuralnetsim.load(graphs_path)
     sim_data = neuralnetsim.load(sim_path)
-    assert len(graph_data['graphs']) == len(sim_data['spike_data'])
     results = client.map(
         bridge_worker,
-        [graph for graph in graph_data['graphs']],
+        [graph for graph in sim_data['graphs']],
         [data for data in sim_data['spike_data']],
-        [trial for trial in graph_data['trials']],
-        [mu for mu in graph_data['target_modularities']],
+        [par for par in sim_data['grid_par']],
+        [mu for mu in sim_data['target_modularities']],
         causal_window=causal_window,
         duration=sim_data['duration'],
-        com_key="level1",
+        com_key=com_key,
         pure=False
     )
-    stats, bfs = zip(*client.gather(results))
-    return pd.DataFrame(stats), bfs
+    return pd.DataFrame(client.gather(results))
 
 
 def process_sim_results(

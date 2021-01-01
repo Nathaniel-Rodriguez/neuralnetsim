@@ -40,7 +40,6 @@ def plot_power_law_distributions(
     ax1.set_xlabel(xlabel)
     ax1.set_ylabel(ylabel)
     ax1.legend()
-    # plt.tight_layout()
     if pdf:
         plt.savefig(save_dir.joinpath(
             prefix + "_powerlaw.pdf"))
@@ -51,10 +50,24 @@ def plot_power_law_distributions(
     plt.clf()
 
 
-def plot_simulation_results(sim_df: pd.DataFrame,
-                            save_dir: Path):
-    ax = seaborn.lineplot(
-        data=sim_df,
-        x=r'$\mu$',
-        y='size'
-    )
+def plot_bridge_results(sim_df: pd.DataFrame,
+                        original_graph: nx.DiGraph,
+                        window_size: int,
+                        save_dir: Path,
+                        prefix: str = ""):
+    seaborn.lineplot(data=sim_df, x=r'$\mu$', y='flow', hue='grid_par')
+    plt.axhline(0.0, c='black', ls='--')
+    plt.savefig("{0}_flow_w{1}.png".format(prefix, str(window_size)), dpi=300)
+    plt.close()
+    plt.clf()
+    seaborn.lineplot(data=sim_df, x=r'$\mu$', y='activity', hue='grid_par')
+    plt.axhline(0.0, c='black', ls='--')
+    plt.savefig("{0}_act_w{1}.png".format(prefix, str(window_size)), dpi=300)
+    plt.close()
+    plt.clf()
+
+    # color example
+    # colors = cm.plasma(np.linspace(0, 1, len(bfs)))
+    # for i, bf in enumerate(bfs):
+    #     x, y = neuralnetsim.eccdf(bf)
+    #     plt.plot(x, y, c=colors[i], alpha=0.2)
