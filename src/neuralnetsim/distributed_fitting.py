@@ -7,7 +7,7 @@ from pathlib import Path
 import nest
 
 
-initialize()
+initialize(interface='ipogif0')
 nest.set_verbosity(40)
 
 
