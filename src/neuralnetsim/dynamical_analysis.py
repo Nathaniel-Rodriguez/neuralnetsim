@@ -84,54 +84,8 @@ def effective_flow(
 
     ef = neuralnetsim.flow_factor(
         data[neuron_id], com_spikes, duration, coincidence_window)
-    # if ef > 100.0:
-    #     print("\n============================\nFlow ",
-    #           ef, 'num neighbors', down_stream_neurons_in_com,
-    #           'num com spikes', len(com_spikes),
-    #           'num n spikes', len(data[neuron_id]),
-    #           'coincidence', neuralnetsim.causal_detector(data[neuron_id], com_spikes, coincidence_window),
-    #           'duration', duration,
-    #           'window', coincidence_window,
-    #           "\n============================\n",
-    #           flush=True)
+
     return ef
-
-
-# def community_flow(
-#         data: Dict[int, np.ndarray],
-#         graph: nx.DiGraph,
-#         comm_source: int,
-#         comm_sink: int,
-#         coincidence_window: float,
-#         duration: float,
-#         com_key: str
-# ) -> float:
-#     """
-#
-#     :param data:
-#     :param graph:
-#     :param neuron_id:
-#     :param comm_id:
-#     :param coincidence_window:
-#     :param duration:
-#     :param com_key:
-#     :return:
-#     """
-#     down_stream_neurons = list(nx.neighbors(graph, neuron_id))
-#     down_stream_neurons_in_com = [
-#         neuron for neuron in down_stream_neurons
-#         if graph.nodes[neuron][com_key] == comm_id
-#     ]
-#     com_spikes = np.array(
-#         [spike_time
-#          for neuron in down_stream_neurons_in_com
-#          for spike_time in data[neuron]]
-#     )
-#     com_spikes.sort()
-#
-#     cf = neuralnetsim.flow_factor(
-#         data[neuron_id], com_spikes, duration, coincidence_window)
-#     return cf
 
 
 def find_bridges(
