@@ -384,7 +384,7 @@ class SCMAEvoStrat:
                 raise RuntimeError("Failed to assign cost for all pops:", costs)
 
             # update best
-            self.best_member[:] = self._state.population[np.argmin(costs)[0], :]
+            self.best_member[:] = self._state.population[np.argmin(costs), :]
 
             # update centroids
             centroid_update_jobs = []
