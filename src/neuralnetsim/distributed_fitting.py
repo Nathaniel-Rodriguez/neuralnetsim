@@ -1,11 +1,13 @@
 import argparse
 import neuralnetsim
 import numpy as np
-from distributed import Client, LocalCluster
+from distributed import Client
+from dask_mpi import initialize
 from pathlib import Path
 import nest
 
 
+initialize()
 nest.set_verbosity(40)
 
 
@@ -93,14 +95,11 @@ def main():
             {'a': (0.01, 100),
              'b': (0.01, 100)},
             0.02, 2000.0),
-        neuralnetsim.ValueTranslator('mean', 0.0, 20.0),
-        neuralnetsim.ValueTranslator('std', 0.001, 10.0, True),
+        neuralnetsim.ValueTranslator('rate', 0.0, 1500.0, False),
         neuralnetsim.ValueTranslator('weight_scale', 5e5, 5e7, True)
     ]
 
-    cluster = LocalCluster(n_workers=args.workers, threads_per_worker=1,
-                           memory_limit=15e9)
-    with Client(cluster) as client:
+    with Client() as client:
         # load in data
         graph = neuralnetsim.load(
             Path(args.graphdir).joinpath(args.name + "_graph.pyobj"))
@@ -112,7 +111,7 @@ def main():
         parameters = neuralnetsim.DistributionParameters(
             graph, "izhikevich",
             translators,
-            ["weight_scale"], ["mean", "std"],
+            ["weight_scale"], ["rate"],
             ["U", "u", "x", "tau_rec", "tau_fac", "delay"],
             ["a", "b", "c", "d"],
             static_neuron_parameters,
@@ -138,7 +137,7 @@ def main():
         es = neuralnetsim.SCMAEvoStrat(x0=x0, sigma0=0.2, seed=args.seed,
                                        population_size=args.workers)
         es.run(neuralnetsim.duration_cost, client,
-               num_iterations=args.niter,  # 6hr for 1k
+               num_iterations=args.niter,
                cost_kwargs={
                    "circuit_parameters": parameters,
                    "kernel_parameters": {"resolution": 0.2},
