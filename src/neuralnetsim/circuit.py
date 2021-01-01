@@ -45,7 +45,7 @@ class NeuralCircuit:
 
         # create noise
         self._noise = nest.Create(
-            "noise_generator",
+            "poisson_generator",
             n=1,
             params=self._circuit_parameters.noise_parameters)
 
@@ -139,7 +139,7 @@ class DistributionCircuit:
 
         # create noise
         self._noise = nest.Create(
-            "noise_generator",
+            "poisson_generator",
             n=1,
             params=self._circuit_parameters.noise_parameters)
 
