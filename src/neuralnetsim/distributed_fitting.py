@@ -67,11 +67,7 @@ def main():
         neuralnetsim.DistributionTranslator(
             'delay', "beta",
             {'a': (0.01, 100),
-             'b': (0.01, 100)}, 0.2, 80.0),
-        neuralnetsim.DistributionTranslator(
-            'delay', "beta",
-            {'a': (0.01, 100),
-             'b': (0.01, 100)}, 0.2, 8.0),
+             'b': (0.01, 100)}, 0.2, 5.0),
         neuralnetsim.DistributionTranslator(
             'U', "beta",
             {'a': (0.01, 100),
