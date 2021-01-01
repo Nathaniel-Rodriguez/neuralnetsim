@@ -1,4 +1,5 @@
-__all__ = ["simulate_model"]
+__all__ = ["simulate_model",
+           "simulate_grid"]
 
 
 import neuralnetsim
@@ -137,7 +138,7 @@ def grid_worker(
 
 def simulate_grid(
         x0,
-        par_range: List[float],
+        par_range: Union[List[float], np.ndarray],
         par_key: str,
         parameter_path: Path,
         fitted_graph_path: Path,
