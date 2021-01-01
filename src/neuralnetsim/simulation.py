@@ -116,16 +116,19 @@ def grid_worker(
 ) -> Dict[int, np.ndarray]:
     """
 
-
-    :param x0:
-    :param parameter_path:
-    :param circuit_type:
     :param graph:
     :param rng:
+    :param par:
+    :param x0:
+    :param par_key:
+    :param parameter_path:
+    :param circuit_type:
     :param duration:
     :param kernel_parameters:
     :return:
     """
+    kernel_parameters.update({'grng_seed': rng.randint(1, 2e5),
+                              **kernel_parameters})
     circuit_parameters = neuralnetsim.load(parameter_path)
     circuit_parameters.network = graph
     circuit_parameters.from_optimizer(x0)
@@ -150,6 +153,22 @@ def simulate_grid(
         save_path: Path,
         kernel_parameters: Dict[str, Any] = None,
 ):
+    """
+
+    :param x0:
+    :param par_range:
+    :param par_key:
+    :param parameter_path:
+    :param fitted_graph_path:
+    :param name:
+    :param client:
+    :param duration:
+    :param seed:
+    :param circuit_type:
+    :param save_path:
+    :param kernel_parameters:
+    :return:
+    """
     if kernel_parameters is None:
         kernel_parameters = {}
     fitted_graph_results = neuralnetsim.load(fitted_graph_path)
