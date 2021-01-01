@@ -28,7 +28,8 @@ setup(name='neuralnetsim',
           'umap-learn>=0.4.6',
           'ripser>=0.6.0',
           'persim>=0.1.3',
-          'powerlaw>=1.4.6'
+          'powerlaw>=1.4.6',
+          'dask-mpi>=2.21.0'
       ],
       include_package_data=False,
       python_requires='>=3.7',
