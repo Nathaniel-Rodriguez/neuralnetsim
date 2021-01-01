@@ -284,7 +284,8 @@ class SCMAEvoStrat:
              'sigma_history': self.sigma_history,
              'sigma_path_history': self.sigma_path_history,
              'cov_path_history': self.cov_path_history,
-             'generation_history': self.generation_history},
+             'generation_history': self.generation_history,
+             'best_member': self.best_member},
             filename
         )
 
