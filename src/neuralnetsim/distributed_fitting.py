@@ -42,7 +42,7 @@ def main():
         'model': 'tsodyks2_synapse'
     }
     static_noise_parameters = {
-        'dt': 1.0
+        # no static
     }
     static_global_parameters = {
         # no static
