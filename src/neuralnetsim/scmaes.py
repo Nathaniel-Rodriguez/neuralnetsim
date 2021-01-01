@@ -270,6 +270,7 @@ class SCMAEvoStrat:
         self.sigma_history = []
         self.sigma_path_history = []
         self.cov_path_history = []
+        self.best_member = np.zeros(self._state._ndim, dtype=self._state._dtype)
 
     def to_file(self, filename: Path):
         """
@@ -380,6 +381,9 @@ class SCMAEvoStrat:
                 raise RuntimeError("Failed to work all pops, remaining:", unworked_pops)
             if np.nan in costs:
                 raise RuntimeError("Failed to assign cost for all pops:", costs)
+
+            # update best
+            self.best_member[:] = self._state.population[np.argmin(costs)[0], :]
 
             # update centroids
             centroid_update_jobs = []
