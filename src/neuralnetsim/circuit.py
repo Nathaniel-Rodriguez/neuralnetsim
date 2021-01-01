@@ -7,6 +7,7 @@ __all__ = ["NeuralCircuit",
 import networkx as nx
 import numpy as np
 import nest
+nest.set_verbosity("M_FATAL")
 from typing import Dict
 from typing import Any
 from typing import Type

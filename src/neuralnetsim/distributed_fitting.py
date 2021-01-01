@@ -7,8 +7,8 @@ from pathlib import Path
 import nest
 
 
-initialize(interface='ipogif0')
-nest.set_verbosity(40)
+initialize(interface='ipogif0', memory_limit=10e9)
+nest.set_verbosity("M_FATAL")
 
 
 def main():
