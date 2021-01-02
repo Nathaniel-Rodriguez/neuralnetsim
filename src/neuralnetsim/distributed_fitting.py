@@ -115,13 +115,7 @@ def main():
             static_global_parameters
         )
         rng = np.random.RandomState(args.seed + 87698)
-        # seed init
-        x0 = np.array([-0.31676954, 0.5, 0.39671683, 0.16929485,
-         0.24374226, 0.04313747, 0.7836569, 0.7128046, 0.7033801,
-         0.8766202, 0.21619919, 0.19610049, 0.40916657, 0.5674917,
-         0.9078985, 0.7817601, -0.00453927, 0.99733984, 1.5057367,
-         0.95449764, 1.1026722, 0.24505736])
-        # x0 = rng.random(parameters.required_array_size())
+        x0 = rng.random(parameters.required_array_size())
 
         # prepare data for fit
         data = {node: data[node]
