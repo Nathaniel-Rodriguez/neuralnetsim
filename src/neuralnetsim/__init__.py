@@ -17,6 +17,7 @@ from neuralnetsim.optimizer_net import *
 from neuralnetsim.circuit import *
 from neuralnetsim.scmaes import *
 from neuralnetsim.ga import *
+from neuralnetsim.mapga import *
 from neuralnetsim.network_fitting import *
 from neuralnetsim.circuit_cost import *
 from neuralnetsim.spike_plots import *
