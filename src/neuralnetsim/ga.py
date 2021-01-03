@@ -44,7 +44,8 @@ class AdaptiveCoolingSchedule:
         :param t0: initial temperature
         :param cooling_factor: determines how quickly the cooling rate can
         change. A high value means fast change, while a low value means
-        changes will be slow. Value is bound between [0,inf].
+        changes will be slow. Value is bound between [0,inf]. Units of energy
+        per temperature.
         :param tmin: the minimum allowed temperature. Default 0.0
         :param max_estimate_window: the maximum allowed history to record.
         :param decay_factor: how strongly to penalize energy contributions from
@@ -144,7 +145,6 @@ class AdaptiveCoolingSchedule:
         # update temperature
         if not math.isclose(weighted_e_std, 0.0, abs_tol=1e-15):
             self._tc = self._tc * math.exp(-self._g * self._tc / weighted_e_std)
-
         else:
             self._tc = self._tc
         self._t_log.append(self._tc)
@@ -192,9 +192,6 @@ class ACSGa:
 
         self._cost_rank_sum = self._population_size \
                               * (self._population_size + 1) / 2
-        # self._selection_probabilities = \
-        #     list(reversed((self._population_size - i) / self._cost_rank_sum
-        #              for i in range(self._population_size)))
         self._selection_probabilities = \
             [(self._population_size - i) / self._cost_rank_sum
                      for i in range(self._population_size)]
@@ -304,4 +301,3 @@ class ACSGa:
             [cost
              for cost in self._costs
              if cost != np.inf])
-
