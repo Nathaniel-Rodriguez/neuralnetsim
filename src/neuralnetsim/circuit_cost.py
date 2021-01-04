@@ -6,7 +6,10 @@ __all__ = ["circuit_cost",
            "ph_cost",
            "avalanche_firing_cost",
            "size_and_duration_cost",
-           "duration_cost"]
+           "duration_cost",
+           "map_cost",
+           "map_cost2",
+           "map_cost3"]
 
 
 import math
@@ -23,7 +26,6 @@ from neuralnetsim import NeuralCircuit
 from neuralnetsim import avalanches_from_zero_activity
 from neuralnetsim import DistributionParameters
 from neuralnetsim import DistributionCircuit
-from neuralnetsim import InhibCircuit
 from scipy.stats import wasserstein_distance
 from typing import Dict
 from typing import Tuple
@@ -410,7 +412,7 @@ def avalanche_firing_cost(
                     'max_spikes': 10000  # ~10 spikes/ms
                 }
         ):
-            print("Memory guard activated", flush=True)
+            # print("Memory guard activated", flush=True)
             return 0.0  # if expected number of spikes exceeds limit return
         model_spikes = circuit.get_spike_trains()
         num_spikes = neuralnetsim.spike_count(model_spikes)
@@ -449,9 +451,11 @@ def size_and_duration_cost(
         duration: float,
         data_avalanche_sizes: np.ndarray,
         data_avalanche_durations: np.ndarray,
+        data_firing_rate_dist: np.ndarray,
         circuit_choice,
-        rng: np.random.RandomState,
-        kernel_seeder: np.random.RandomState = None) -> float:
+        kernel_seeder: np.random.RandomState = None,
+        **kwargs
+) -> float:
     """
     Calculates the cost for a given parameter array. Uses the Wasserstein
     distance between model avalanche size distribution and data avalanche size
@@ -465,21 +469,16 @@ def size_and_duration_cost(
                                   'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
     circuit_parameters.from_optimizer(x)
     with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
-                        rng) as circuit:
-        try:
-            if not circuit.run(
-                    duration,
-                    memory_guard={
-                        'duration': 1000.0,
-                        # 'max_spikes': 1250000000 / duration * 1000 # ~10GB
-                        'max_spikes': 8000  # ~10 spikes/ms
-                    }
-            ):
-                print("\tMemory guard activated", flush=True)
-                return 0.0  # if expected number of spikes exceeds limit return
-        except Exception as err:
-            print("FAILED TO RUN NEST. ERROR: ", err)
-            return 0.0
+                        **kwargs) as circuit:
+        if not circuit.run(
+                duration,
+                memory_guard={
+                    'duration': 1000.0,
+                    'max_spikes': 8000  # ~10 spikes/ms
+                }
+        ):
+            # print("\tMemory guard activated", flush=True)
+            return 0.0  # if expected number of spikes exceeds limit return
         model_spikes = circuit.get_spike_trains()
         num_spikes = neuralnetsim.spike_count(model_spikes)
         # if too few spikes, then isi can't be calculated, if too many
@@ -491,16 +490,18 @@ def size_and_duration_cost(
                 duration
             )
             if len(model_avalanche_sizes) > 0:
-                # d = wasserstein_distance(model_avalanche_sizes,
-                #                          data_avalanche_sizes)
-                # f = wasserstein_distance(model_times[:, 1] - model_times[:, 0],
-                #                          data_avalanche_durations)
-                # cost = -1 / math.log(f + d + 1)  # max cost is 0, min cost -inf
-                # d = wasserstein_distance(model_avalanche_sizes,
-                #                          data_avalanche_sizes)
+                d = wasserstein_distance(model_avalanche_sizes,
+                                         data_avalanche_sizes)
                 f = wasserstein_distance(model_times[:, 1] - model_times[:, 0],
                                          data_avalanche_durations)
-                cost = -1 / math.log(f + 1)  # max cost is 0, min cost -inf
+                r = wasserstein_distance(
+                    neuralnetsim.firing_rate_distribution(
+                        model_spikes, duration
+                    ),
+                    data_firing_rate_dist
+                )
+                cost = -1 / math.log(1000.0 * r + f + d + 1)  # max cost is 0, min cost -inf
+                print("\t\tdistances:", 1000.0*r, f, d)
             else:
                 cost = 0.0
         else:
@@ -543,7 +544,7 @@ def duration_cost(
                     'max_spikes': 8000  # ~10 spikes/ms
                 }
         ):
-            print("\tMemory guard activated", flush=True)
+            # print("\tMemory guard activated", flush=True)
             return 0.0  # if expected number of spikes exceeds limit return
         model_spikes = circuit.get_spike_trains()
         num_spikes = neuralnetsim.spike_count(model_spikes)
@@ -568,3 +569,211 @@ def duration_cost(
               "Cost", cost, flush=True)
 
     return cost
+
+
+def map_cost(
+        x: np.ndarray,
+        circuit_parameters,
+        kernel_parameters: Dict,
+        duration: float,
+        data_avalanche_sizes: np.ndarray,
+        circuit_choice,
+        kernel_seeder: np.random.RandomState = None,
+        **kwargs
+) -> Tuple[float, float, float]:
+    """
+    Calculates the cost for a given parameter array. Uses the Wasserstein
+    distance between model avalanche size distribution and data avalanche size
+    distribution as a cost. Uses a training manager to use subsets of the
+    training data for batches for each epoch of the trainer. Kernel seeder is
+    used to set new kernel seeds for each execution of the cost function.
+
+    """
+    if kernel_seeder is not None:
+        kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
+                                  'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
+    circuit_parameters.from_optimizer(x)
+    with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
+                        **kwargs) as circuit:
+        f1 = 0.0
+        f2 = 0.0
+        if not circuit.run(
+                duration,
+                memory_guard={
+                    'duration': 1000.0,
+                    'max_spikes': 8000  # ~10 spikes/ms
+                }
+        ):
+            # print("\tMemory guard activated", flush=True)
+            return 0.0, 1.1, 1e6  # if expected number of spikes exceeds limit return
+        model_spikes = circuit.get_spike_trains()
+        num_spikes = neuralnetsim.spike_count(model_spikes)
+        # if too few spikes, then isi can't be calculated, if too many
+        # than too much memory is used.
+        if (num_spikes > 4) and (num_spikes < 10000000):
+            f1 = neuralnetsim.percent_active(model_spikes)
+            model_times, model_avalanche_sizes = avalanches_from_zero_activity(
+                model_spikes,
+                0.0,
+                duration
+            )
+            if len(model_avalanche_sizes) > 0:
+                f = wasserstein_distance(model_avalanche_sizes,
+                                         data_avalanche_sizes)
+                cost = -1 / math.log(f + 1)  # max cost is 0, min cost -inf
+                f2 = np.max(model_times[:, 1] - model_times[:, 0])
+            else:
+                cost = 0.0
+        else:
+            cost = 0.0
+        # print("\tNum of spikes:",
+        #       str(int(num_spikes / 1000)) + "K",
+        #       "Cost", cost, flush=True)
+
+    return cost, f1, f2
+
+
+def map_cost2(
+        x: np.ndarray,
+        circuit_parameters,
+        kernel_parameters: Dict,
+        duration: float,
+        data_avalanche_sizes: np.ndarray,
+        data_avalanche_durations: np.ndarray,
+        data_firing_rate_dist: np.ndarray,
+        circuit_choice,
+        kernel_seeder: np.random.RandomState = None,
+        **kwargs
+) -> Tuple[float, float, float]:
+    """
+    Calculates the cost for a given parameter array. Uses the Wasserstein
+    distance between model avalanche size distribution and data avalanche size
+    distribution as a cost. Uses a training manager to use subsets of the
+    training data for batches for each epoch of the trainer. Kernel seeder is
+    used to set new kernel seeds for each execution of the cost function.
+
+    """
+    if kernel_seeder is not None:
+        kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
+                                  'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
+    circuit_parameters.from_optimizer(x)
+    with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
+                        **kwargs) as circuit:
+        f1 = 0.0
+        f2 = 0.0
+        if not circuit.run(
+                duration,
+                memory_guard={
+                    'duration': 1000.0,
+                    'max_spikes': 8000  # ~10 spikes/ms
+                }
+        ):
+            # print("\tMemory guard activated", flush=True)
+            return 0.0, 0.0, 0.0  # if expected number of spikes exceeds limit return
+        model_spikes = circuit.get_spike_trains()
+        num_spikes = neuralnetsim.spike_count(model_spikes)
+        # if too few spikes, then isi can't be calculated, if too many
+        # than too much memory is used.
+        if (num_spikes > 4) and (num_spikes < 10000000):
+            f1 = neuralnetsim.percent_active(model_spikes)
+            model_times, model_avalanche_sizes = avalanches_from_zero_activity(
+                model_spikes,
+                0.0,
+                duration
+            )
+            if len(model_avalanche_sizes) > 0:
+                d = wasserstein_distance(model_avalanche_sizes,
+                                         data_avalanche_sizes)
+                f = wasserstein_distance(model_times[:, 1] - model_times[:, 0],
+                                         data_avalanche_durations)
+                r = wasserstein_distance(
+                    neuralnetsim.firing_rate_distribution(
+                        model_spikes, duration
+                    ),
+                    data_firing_rate_dist
+                )
+                cost = -1 / math.log(1000.0 * r + f + d + 1)  # max cost is 0, min cost -inf
+                f2 = np.log10(np.max(model_times[:, 1] - model_times[:, 0]))
+            else:
+                cost = 0.0
+        else:
+            cost = 0.0
+        # print("\tNum of spikes:",
+        #       str(int(num_spikes / 1000)) + "K",
+        #       "Cost", cost, flush=True)
+
+    return cost, f1, f2
+
+
+def map_cost3(
+        x: np.ndarray,
+        circuit_parameters,
+        kernel_parameters: Dict,
+        duration: float,
+        data_avalanche_sizes: np.ndarray,
+        data_avalanche_durations: np.ndarray,
+        data_firing_rate_dist: np.ndarray,
+        circuit_choice,
+        kernel_seeder: np.random.RandomState = None,
+        **kwargs
+) -> Tuple[float, float, float]:
+    """
+    Calculates the cost for a given parameter array. Uses the Wasserstein
+    distance between model avalanche size distribution and data avalanche size
+    distribution as a cost. Uses a training manager to use subsets of the
+    training data for batches for each epoch of the trainer. Kernel seeder is
+    used to set new kernel seeds for each execution of the cost function.
+
+    """
+    if kernel_seeder is not None:
+        kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
+                                  'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
+    circuit_parameters.from_optimizer(x)
+    with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
+                        **kwargs) as circuit:
+        f1 = 0.0
+        f2 = 0.0
+        if not circuit.run(
+                duration,
+                memory_guard={
+                    'duration': 1000.0,
+                    'max_spikes': 8000  # ~10 spikes/ms
+                }
+        ):
+            print("\tMemory guard activated", flush=True)
+            return 0.0, 0.0, 0.0  # if expected number of spikes exceeds limit return
+        model_spikes = circuit.get_spike_trains()
+        num_spikes = neuralnetsim.spike_count(model_spikes)
+        # if too few spikes, then isi can't be calculated, if too many
+        # than too much memory is used.
+        if (num_spikes > 4) and (num_spikes < 10000000):
+            f1 = neuralnetsim.percent_active(model_spikes)
+            model_times, model_avalanche_sizes = avalanches_from_zero_activity(
+                model_spikes,
+                0.0,
+                duration
+            )
+            if len(model_avalanche_sizes) > 0:
+                model_durations = model_times[:, 1] - model_times[:, 0]
+                d = wasserstein_distance(model_avalanche_sizes,
+                                         data_avalanche_sizes)
+                f = wasserstein_distance(model_durations,
+                                         data_avalanche_durations)
+                r = wasserstein_distance(
+                    neuralnetsim.firing_rate_distribution(
+                        model_spikes, duration
+                    ),
+                    data_firing_rate_dist
+                )
+                cost = -1 / math.log(1000.0 * r + f + d + 1)  # max cost is 0, min cost -inf
+
+                print("\t\tf1: ", f1, "f2: ", f2, "cost:", cost, flush=True)
+            else:
+                cost = 0.0
+        else:
+            cost = 0.0
+        # print("\tNum of spikes:",
+        #       str(int(num_spikes / 1000)) + "K",
+        #       "Cost", cost, flush=True)
+
+    return cost, f1, f2
