@@ -14,6 +14,7 @@ from typing import Type
 from typing import Union
 from neuralnetsim import CircuitParameters
 from neuralnetsim import DistributionParameters
+from neuralnetsim import AllNeuronSynDistParameters
 from neuralnetsim import spike_count
 
 
@@ -126,13 +127,19 @@ class DistributionCircuit:
         graph = self._circuit_parameters.network
 
         # create neurons
-        self._neurons = nest.Create(
-            self._circuit_parameters.neuron_model,
-            n=nx.number_of_nodes(graph),
-            params=self._circuit_parameters.generate_neuron_parameters(
-                nx.number_of_nodes(graph),
-                self._rng
-            ))
+        if isinstance(self._circuit_parameters, DistributionParameters):
+            self._neurons = nest.Create(
+                self._circuit_parameters.neuron_model,
+                n=nx.number_of_nodes(graph),
+                params=self._circuit_parameters.generate_neuron_parameters(
+                    nx.number_of_nodes(graph),
+                    self._rng
+                ))
+        elif isinstance(self._circuit_parameters, AllNeuronSynDistParameters):
+            self._neurons = nest.Create(
+                self._circuit_parameters.neuron_model,
+                n=nx.number_of_nodes(graph),
+                params=list(self._circuit_parameters.neuron_parameters.values()))
         self._neuron_to_nest = {neuron_id: self._neurons[i]
                                 for i, neuron_id in enumerate(graph.nodes())}
         self._nest_to_neuron = {self._neurons[i]: neuron_id
