@@ -17,7 +17,8 @@ __all__ = ["spike_count",
            "agg_sim_avalanche_distributions",
            "effective_flow",
            "bridge_flows",
-           "process_bridge_results"]
+           "process_bridge_results",
+           "percent_active"]
 
 
 import neuralnetsim
@@ -34,6 +35,10 @@ from persim import sliced_wasserstein
 from typing import Dict
 from typing import Tuple
 from typing import List
+
+
+def percent_active(data: Dict[int, np.ndarray]) -> float:
+    return sum([1 for arr in data.values() if len(arr) > 1]) / len(data)
 
 
 def spike_count(data: Dict[int, np.ndarray]) -> int:
