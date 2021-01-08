@@ -19,6 +19,16 @@ class CoolingSchedule(ABC):
         """
         raise NotImplementedError
 
+    def async_step(self, sample_t: float, sample_e: float) -> float:
+        """
+        Steps the cooling schedule for asynchronous updates.
+
+        :param sample_t: temperature of the given sample
+        :param sample_e: energy of the given sample
+        :return: the new temperature
+        """
+        raise NotImplementedError
+
     @property
     @abstractmethod
     def t(self):
@@ -65,6 +75,9 @@ class ExponentialCoolingSchedule(CoolingSchedule):
             self._t = self.t0 * (self.cooling_factor ** (self._step - self.start))
         self._step += 1
         return self._t
+
+    def async_step(self, sample_t: float, sample_e: float) -> float:
+        raise NotImplementedError
 
     @property
     def t(self):
@@ -137,8 +150,24 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         self._sample_index = max_estimate_window  # index for first valid sample
 
     @property
+    def temperature(self):
+        return self._tc
+
+    @temperature.setter
+    def temperature(self, value):
+        raise NotImplementedError
+
+    @property
     def t(self):
         return self._tc
+
+    @property
+    def log(self):
+        return self._t_record
+
+    @log.setter
+    def log(self, value):
+        raise NotImplementedError
 
     @property
     def record(self):
@@ -165,14 +194,17 @@ class AdaptiveCoolingSchedule(CoolingSchedule):
         raise NotImplementedError
 
     def step(self, energy: float) -> float:
+        return self.async_step(self._tc, energy)
+
+    def async_step(self, sample_t: float, sample_e: float) -> float:
         if self._sample_index > 0:
             self._sample_index -= 1
 
         # pop the old sample and add the newest
         self._t_history[:-1] = self._t_history[1:]
-        self._t_history[-1] = self._tc
+        self._t_history[-1] = sample_t
         self._e_history[:-1] = self._e_history[1:]
-        self._e_history[-1] = energy
+        self._e_history[-1] = sample_e
 
         # wait to update the temperature until enough samples are accumulated
         # wait to update until after the start period
