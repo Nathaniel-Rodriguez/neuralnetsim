@@ -4,6 +4,7 @@ __all__ = ["NeuralCircuit",
            "InhibCircuit"]
 
 
+import copy
 import networkx as nx
 import numpy as np
 import nest
@@ -227,16 +228,17 @@ class InhibCircuit(DistributionCircuit):
             circuit_parameters: DistributionParameters,
             rng: np.random.RandomState
     ):
-        new_network = circuit_parameters.network.copy()
-        for v, node in circuit_parameters.global_parameters.items():
-            if isinstance(node, int):
-                if v < 0.5:  # if less than 0.5 treat as inhibitory
-                    successors = new_network.neighbors(node)
-                    for successor in successors:
-                        new_network[node][successor]['weight'] =\
-                            -new_network[node][successor]['weight']
-        circuit_parameters.network = new_network
-        super().__init__(circuit_parameters, rng)
+        parameters = copy.deepcopy(circuit_parameters)
+        # copy circuit parameters, split neuron parameters into ex/in
+        # make network weights inhibitory before initializing the circuit
+        for node, pars in parameters.neuron_parameters.items():
+            if pars['mode'] < 0.5:  # if less than 0.5 treat as inhibitory
+                successors = parameters.network.neighbors(node)
+                for successor in successors:
+                    parameters.network[node][successor]['weight'] =\
+                        -parameters.network[node][successor]['weight']
+            del parameters.neuron_parameters[node]['mode']
+        super().__init__(parameters, rng)
 
 
 class CircuitManager:
