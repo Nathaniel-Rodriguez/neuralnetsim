@@ -17,7 +17,7 @@ class TestNeuralCircuit(unittest.TestCase):
             "iaf_tum_2000",
             {"t_ref_tot": 10.0, "t_ref_abs": 10.0},
             {"delay": 10.0},
-            {"mean": 1000.0},
+            {"rate": 1000.0},
             {"weight_scale": 8000.0}
         )
 
@@ -58,7 +58,7 @@ class TestCircuitManager(unittest.TestCase):
             "iaf_tum_2000",
             {"t_ref_tot": 10.0, "t_ref_abs": 10.0},
             {"delay": 10.0},
-            {"mean": 1000.0},
+            {"rate": 1000.0},
             {"weight_scale": 8000.0}
         )
 
