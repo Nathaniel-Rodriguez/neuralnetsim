@@ -9,13 +9,14 @@ __all__ = ["circuit_cost",
            "duration_cost",
            "map_cost",
            "map_cost2",
-           "map_cost3"]
+           "map_cost3",
+           "map_cost4",
+           "IzhikevichMemberSource"]
 
 
 import math
 import numpy as np
 import neuralnetsim
-import umap
 from neuralnetsim import ArrayTranslator
 from neuralnetsim import TrialManager
 from neuralnetsim import CircuitParameters
@@ -30,6 +31,64 @@ from scipy.stats import wasserstein_distance
 from typing import Dict
 from typing import Tuple
 from typing import List
+
+
+class IzhikevichMemberSource(neuralnetsim.DrawMember):
+    def __init__(
+            self,
+            parameters: neuralnetsim.AllNeuronSynDistParameters,
+            inhib_fract=0.2,
+            disable_inhib=False
+    ):
+        self._ndim = parameters.required_array_size()
+        self._inhib_fract = inhib_fract
+        self._disable_inhib = disable_inhib
+        self._num_neurons = len(parameters.network)
+        self._a_indices = []
+        self._b_indices = []
+        self._c_indices = []
+        self._d_indices = []
+        self._mode_indices = []
+        index = 0
+        for key in parameters.key_order:
+            if key == "a":
+                self._a_indices.append(index)
+            elif key == "b":
+                self._b_indices.append(index)
+            elif key == "c":
+                self._c_indices.append(index)
+            elif key == "d":
+                self._d_indices.append(index)
+            elif key == "mode":
+                self._mode_indices.append(index)
+            index += neuralnetsim.get_translator(
+                parameters.translators, key).num_parameters()
+        # from NEST defaults
+        self._default_a = neuralnetsim.get_translator(parameters.translators, "a").to_optimizer(0.02)
+        self._default_b = neuralnetsim.get_translator(parameters.translators, "b").to_optimizer(0.2)
+        self._default_c = neuralnetsim.get_translator(parameters.translators, "c").to_optimizer(-65.0)
+        self._default_d = neuralnetsim.get_translator(parameters.translators, "d").to_optimizer(8.0)
+
+        self._default_in = 0.49#0.25
+        self._default_ex = 0.51#0.75
+
+    def draw(self, rng: np.random.RandomState) -> np.ndarray:
+        random_member = rng.uniform(0.0, 1.0, size=self._ndim)
+        # set appropriate indices with defaults
+        random_member[self._a_indices] = self._default_a
+        random_member[self._b_indices] = self._default_b
+        random_member[self._c_indices] = self._default_c
+        random_member[self._d_indices] = self._default_d
+
+        if not self._disable_inhib:
+            in_indices = rng.choice(self._mode_indices,
+                                    int(self._inhib_fract * len(self._mode_indices)),
+                                    replace=False)
+            ex_indices = [index for index in self._mode_indices
+                          if index not in in_indices]
+            random_member[in_indices] = self._default_in
+            random_member[ex_indices] = self._default_ex
+        return random_member
 
 
 def circuit_cost(x: np.ndarray,
@@ -251,10 +310,11 @@ def avalanche_participation_cost(
         circuit_parameters: DistributionParameters,
         kernel_parameters: Dict,
         duration: float,
-        data_avalanche_sizes: np.ndarray,
         data_participation_dist: np.ndarray,
-        rng: np.random.RandomState,
-        kernel_seeder: np.random.RandomState = None) -> float:
+        circuit_choice,
+        kernel_seeder: np.random.RandomState = None,
+        **kwargs
+) -> float:
     """
     Calculates the cost for a given parameter array. Uses the Wasserstein
     distance between model avalanche size distribution and data avalanche size
@@ -267,13 +327,13 @@ def avalanche_participation_cost(
         kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
                                   'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
     circuit_parameters.from_optimizer(x)
-    with CircuitManager(DistributionCircuit, kernel_parameters, circuit_parameters,
-                        rng) as circuit:
+    with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
+                        **kwargs) as circuit:
         if not circuit.run(
                 duration,
                 memory_guard={
                     'duration': 1000.0,
-                    'max_spike': 10000
+                    'max_spike': 16000
                 }
         ):
             print("Memory guard activated", flush=True)
@@ -289,24 +349,16 @@ def avalanche_participation_cost(
                 duration
             )
             if len(model_avalanche_sizes) > 0:
-                d = wasserstein_distance(model_avalanche_sizes,
-                                         data_avalanche_sizes)
-                cost = -1 / math.log(d + 1)  # max cost is 0, min cost -inf
-
                 model_participation_dist = neuralnetsim.participating_neuron_distribution(
                     times, model_spikes
                 )
-                e = wasserstein_distance(model_participation_dist,
+                p = wasserstein_distance(model_participation_dist,
                                          data_participation_dist)
-                ecost = -1 / math.log(d + 1)
-                cost += ecost
+                cost = -1 / math.log(p + 1)
             else:
                 cost = 0.0
         else:
             cost = 0.0
-        print("Num of spikes:",
-              str(int(num_spikes / 1000)) + "K",
-              "Cost", cost, flush=True)
 
     return cost
 
@@ -775,5 +827,73 @@ def map_cost3(
         # print("\tNum of spikes:",
         #       str(int(num_spikes / 1000)) + "K",
         #       "Cost", cost, flush=True)
+
+    return cost, f1, f2
+
+
+def map_cost4(
+        x: np.ndarray,
+        circuit_parameters,
+        kernel_parameters: Dict,
+        duration: float,
+        data_participation_dist: np.ndarray,
+        data_durations: np.ndarray,
+        circuit_choice,
+        kernel_seeder: np.random.RandomState = None,
+        **kwargs
+) -> Tuple[float, float, float]:
+    """
+    Calculates the cost for a given parameter array. Uses the Wasserstein
+    distance between model avalanche size distribution and data avalanche size
+    distribution as a cost. Uses a training manager to use subsets of the
+    training data for batches for each epoch of the trainer. Kernel seeder is
+    used to set new kernel seeds for each execution of the cost function.
+
+    """
+    if kernel_seeder is not None:
+        kernel_parameters.update({'grng_seed': kernel_seeder.randint(1, 2e5),
+                                  'rng_seeds': [kernel_seeder.randint(1, 2e5)]})
+    circuit_parameters.from_optimizer(x)
+    with CircuitManager(circuit_choice, kernel_parameters, circuit_parameters,
+                        **kwargs) as circuit:
+        f1 = 0.0
+        f2 = 0.0
+        if not circuit.run(
+                duration,
+                memory_guard={
+                    'duration': 1000.0,
+                    'max_spikes': 16000  # ~10 spikes/ms
+                }
+        ):
+            print("Memory guard activated", flush=True)
+            return 0.0, 0.0, 0.0  # if expected number of spikes exceeds ~10GB return
+        model_spikes = circuit.get_spike_trains()
+        num_spikes = neuralnetsim.spike_count(model_spikes)
+        # if too few spikes, then isi can't be calculated, if too many
+        # than too much memory is used.
+        if (num_spikes > 4) and (num_spikes < 10000000):
+            f1 = neuralnetsim.percent_active(model_spikes)
+            model_times, model_avalanche_sizes = avalanches_from_zero_activity(
+                model_spikes,
+                0.0,
+                duration
+            )
+            if len(model_avalanche_sizes) > 0:
+                model_participation_dist = neuralnetsim.participating_neuron_distribution(
+                    model_times, model_spikes
+                )
+                p = wasserstein_distance(model_participation_dist,
+                                         data_participation_dist)
+                model_durations = model_times[:, 1] - model_times[:, 0]
+                f = wasserstein_distance(model_durations,
+                                         data_durations)
+                cost = -1 / math.log(f / 3 + p + 1)
+                # cost = -1 / math.log(p + 1)
+                # print("Cost", cost, "d", f, "p", p, flush=True)
+                f2 = np.log10(np.max(model_times[:, 1] - model_times[:, 0]))
+            else:
+                cost = 0.0
+        else:
+            cost = 0.0
 
     return cost, f1, f2
