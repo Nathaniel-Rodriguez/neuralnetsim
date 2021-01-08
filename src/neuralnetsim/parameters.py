@@ -6,6 +6,7 @@ __all__ = ["CircuitParameters",
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import copy
 from pathlib import Path
 from neuralnetsim import get_translator
 from neuralnetsim import ValueTranslator
@@ -61,7 +62,7 @@ class CircuitParameters:
         if not self._homogeneous_neurons:
             self.neuron_parameters = {
                 neuron_id: {} if static_neuron_parameters is None
-                else static_neuron_parameters
+                else copy.deepcopy(static_neuron_parameters)
                 for neuron_id in self._nodes}
         else:
             if static_neuron_parameters is None:
@@ -365,7 +366,7 @@ class AllNeuronSynDistParameters:
             self.neuron_parameters = {neuron_id: {} for neuron_id in self._nodes}
         else:
             self.neuron_parameters = {
-                neuron_id: static_neuron_parameters
+                neuron_id: copy.deepcopy(static_neuron_parameters)
                 for neuron_id in self._nodes}
 
         if static_synaptic_parameters is None:
@@ -383,6 +384,14 @@ class AllNeuronSynDistParameters:
         else:
             self.global_parameters = static_global_parameters
         self._dist_args = {}
+
+    @property
+    def translators(self):
+        return self._translators
+
+    @property
+    def key_order(self):
+        return self._key_order
 
     def generate_synapse_parameters(self, num_synapses: int,
                                     rng: np.random.RandomState) -> Dict[str, np.ndarray]:
@@ -477,6 +486,10 @@ class AllNeuronSynDistParameters:
         s += "key order: " + self._key_order.__repr__() + "\n"
         s += "array size: " + self._array_size.__repr__() + "\n"
         s += "dist args: " + self._dist_args.__repr__() + "\n"
+        s += "syn parameters: " + self.synaptic_parameters.__repr__() + "\n"
+        s += "noise parameters: " + self.noise_parameters.__repr__() + "\n"
+        s += "global parameters: " + self.global_parameters.__repr__() + "\n"
+        s += "neuron parameters: " + self.neuron_parameters.__repr__() + "\n"
         s += "============================================" + "\n"
         return s
 
