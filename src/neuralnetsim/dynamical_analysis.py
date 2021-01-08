@@ -28,6 +28,7 @@ import umap
 import ripser
 import statsmodels.tsa.stattools as stats
 import pandas as pd
+from collections import Counter
 from distributed import Client
 from collections import Counter
 from pathlib import Path
@@ -330,26 +331,37 @@ def avalanches_from_zero_activity(
     )
 
 
-def participating_neuron_distribution(avalanche_times: np.ndarray,
-                                      spike_data: Dict[int, np.ndarray]) -> np.ndarray:
-    """
+# def participating_neuron_distribution(avalanche_times: np.ndarray,
+#                                       spike_data: Dict[int, np.ndarray]) -> np.ndarray:
+#     """
+#
+#     :param avalanche_times:
+#     :param spike_data:
+#     :return:
+#     """
+#     import time
+#     s = time.time()
+#     participation_dist = np.zeros(len(avalanche_times), dtype=np.int32)
+#     for i, (start, stop) in enumerate(avalanche_times):
+#         for spikes in spike_data.values():
+#             if len(spikes[np.logical_and(
+#                 spikes >= start,
+#                 spikes < stop
+#             )]) >= 1:
+#                 participation_dist[i] += 1
+#     print("part time", time.time() - s, "num aval", len(avalanche_times), flush=True)
+#     return participation_dist
 
-    :param avalanche_times:
-    :param spike_data:
-    :return:
-    """
-    import time
-    s = time.time()
-    participation_dist = np.zeros(len(avalanche_times), dtype=np.int32)
-    for i, (start, stop) in enumerate(avalanche_times):
-        for spikes in spike_data.values():
-            if len(spikes[np.logical_and(
-                spikes >= start,
-                spikes < stop
-            )]) >= 1:
-                participation_dist[i] += 1
-    print("part time", time.time() - s, "num aval", len(avalanche_times), flush=True)
-    return participation_dist
+
+def participating_neuron_distribution(
+        avalanche_times: np.ndarray,
+        spike_data: Dict[int, np.ndarray]
+) -> np.ndarray:
+    bins = np.sort(avalanche_times.flatten())
+    total_participation = []
+    for spikes in spike_data.values():
+        total_participation += list(set(np.digitize(spikes, bins)))
+    return np.array(list(Counter(total_participation).values()))
 
 
 def get_acorr_time(binned_spikes: np.ndarray, lags=1000, threshold=0.5) -> int:
