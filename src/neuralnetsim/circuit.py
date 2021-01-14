@@ -228,16 +228,27 @@ class InhibCircuit(DistributionCircuit):
             circuit_parameters: DistributionParameters,
             rng: np.random.RandomState
     ):
+        # parameters = copy.deepcopy(circuit_parameters)
+        # # copy circuit parameters, split neuron parameters into ex/in
+        # # make network weights inhibitory before initializing the circuit
+        # for node, pars in parameters.neuron_parameters.items():
+        #     if pars['mode'] < 0.5:  # if less than 0.5 treat as inhibitory
+        #         successors = parameters.network.neighbors(node)
+        #         for successor in successors:
+        #             parameters.network[node][successor]['weight'] =\
+        #                 -parameters.network[node][successor]['weight']
+        #     del parameters.neuron_parameters[node]['mode']
+        # super().__init__(parameters, rng)
+        #
         parameters = copy.deepcopy(circuit_parameters)
         # copy circuit parameters, split neuron parameters into ex/in
         # make network weights inhibitory before initializing the circuit
         for node, pars in parameters.neuron_parameters.items():
-            if pars['mode'] < 0.5:  # if less than 0.5 treat as inhibitory
+            if rng.random() < 0.15:
                 successors = parameters.network.neighbors(node)
                 for successor in successors:
                     parameters.network[node][successor]['weight'] =\
                         -parameters.network[node][successor]['weight']
-            del parameters.neuron_parameters[node]['mode']
         super().__init__(parameters, rng)
 
 
