@@ -217,7 +217,8 @@ def plot_collapsed_ccdf_distributions(
         comparison_legend_label: str = "comparison",
         save_dir: Path = None,
         prefix: str = "",
-        color_match_comparison: bool = False
+        color_match_comparison: bool = False,
+        as_pdf=False
 ):
     if save_dir is None:
         save_dir = Path.cwd()
@@ -255,8 +256,12 @@ def plot_collapsed_ccdf_distributions(
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.tight_layout()
-    plt.savefig(save_dir.joinpath(
-        prefix + "_collapsed_ccdf.png"), dpi=600)
+    if as_pdf:
+        plt.savefig(save_dir.joinpath(
+            prefix + "_collapsed_ccdf.pdf"))
+    else:
+        plt.savefig(save_dir.joinpath(
+            prefix + "_collapsed_ccdf.png"), dpi=600)
     plt.close()
     plt.clf()
 
