@@ -1,9 +1,11 @@
 __all__ = ["calc_mu", "calc_strength_distribution",
-           "calc_nodal_strength_difference_distribution"]
+           "calc_nodal_strength_difference_distribution",
+           "get_communities"]
 
 
 import numpy as np
 import networkx as nx
+from typing import List
 
 
 def calc_mu(graph: nx.DiGraph, key: str) -> float:
@@ -19,6 +21,16 @@ def calc_mu(graph: nx.DiGraph, key: str) -> float:
         weight for edge, weight in nx.get_edge_attributes(graph, "weight").items()
         if graph.nodes[edge[0]][key] != graph.nodes[edge[1]][key]
     ) / sum(weight for edge, weight in nx.get_edge_attributes(graph, "weight").items())
+
+
+def get_communities(graph: nx.DiGraph, key: str) -> List[int]:
+    """
+
+    :param graph:
+    :param key:
+    :return:
+    """
+    return sorted(list(set(com for com in nx.get_node_attributes(graph, key).values())))
 
 
 def calc_strength_distribution(graph: nx.DiGraph, direction: str) -> np.ndarray:
