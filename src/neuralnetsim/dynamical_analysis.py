@@ -18,7 +18,15 @@ __all__ = ["spike_count",
            "effective_flow",
            "bridge_flows",
            "process_bridge_results",
-           "percent_active"]
+           "percent_active",
+           "community_outflow",
+           "internal_community_flow",
+           "process_outflow_results",
+           "neighbor_flow",
+           "global_flow",
+           "process_global_flow_results",
+           "process_internal_flow_results",
+           "process_grid_results"]
 
 
 import neuralnetsim
@@ -28,7 +36,6 @@ import umap
 import ripser
 import statsmodels.tsa.stattools as stats
 import pandas as pd
-from collections import Counter
 from distributed import Client
 from collections import Counter
 from pathlib import Path
@@ -94,6 +101,52 @@ def effective_flow(
     return ef
 
 
+def internal_flow(
+        data: Dict[int, np.ndarray],
+        graph: nx.DiGraph,
+        neuron_id: int,
+        coincidence_window: float,
+        duration: float,
+        com_key: str
+):
+    down_stream_neurons = list(nx.neighbors(graph, neuron_id))
+    down_stream_neurons_own_com = [
+        neuron for neuron in down_stream_neurons
+        if graph.nodes[neuron][com_key] == graph.nodes[neuron_id][com_key]
+    ]
+    com_spikes = np.array(
+        [spike_time
+         for neuron in down_stream_neurons_own_com
+         for spike_time in data[neuron]]
+    )
+    com_spikes.sort()
+
+    ef = neuralnetsim.flow_factor(
+        data[neuron_id], com_spikes, duration, coincidence_window)
+
+    return ef
+
+
+def neighbor_flow(
+        data: Dict[int, np.ndarray],
+        graph: nx.DiGraph,
+        neuron_id: int,
+        coincidence_window: float,
+        duration: float,
+):
+    down_stream_neurons = list(nx.neighbors(graph, neuron_id))
+    com_spikes = np.array(
+        [spike_time
+         for neuron in down_stream_neurons
+         for spike_time in data[neuron]]
+    )
+    com_spikes.sort()
+    ef = neuralnetsim.flow_factor(
+        data[neuron_id], com_spikes, duration, coincidence_window)
+
+    return ef
+
+
 def find_bridges(
         graph: nx.DiGraph,
         com_key: str
@@ -138,6 +191,69 @@ def bridge_flows(
         flows.append(effective_flow(
             data, graph, bridge, com, coincidence_window, duration, com_key))
     return np.array(flows)
+
+
+def community_outflow(
+        data: Dict[int, np.ndarray],
+        graph: nx.DiGraph,
+        coincidence_window: float,
+        duration: float,
+        com_key: str
+) -> Dict[int, np.ndarray]:
+    """
+    Calculates bridge out-flow by community
+
+    :param data:
+    :param graph:
+    :param coincidence_window:
+    :param duration:
+    :param com_key:
+    :return:
+    """
+    bridge_nodes = find_bridges(graph, com_key)
+    coms = neuralnetsim.get_communities(graph, com_key)
+    return {
+        com: np.array([
+            effective_flow(data, graph, bridge,
+                           sink_com, coincidence_window,
+                           duration, com_key)
+            for bridge, sink_com in bridge_nodes
+            if graph.nodes[bridge][com_key] == com
+        ])
+        for com in coms
+    }
+
+
+def internal_community_flow(
+        data: Dict[int, np.ndarray],
+        graph: nx.DiGraph,
+        coincidence_window: float,
+        duration: float,
+        com_key: str
+) -> Dict[int, np.ndarray]:
+    coms = neuralnetsim.get_communities(graph, com_key)
+    return {
+        com: np.array([
+            internal_flow(data, graph, node, coincidence_window,
+                          duration, com_key)
+            for node in graph.nodes
+            if graph.nodes[node][com_key] == com
+        ])
+        for com in coms
+    }
+
+
+def global_flow(
+        data: Dict[int, np.ndarray],
+        graph: nx.DiGraph,
+        coincidence_window: float,
+        duration: float
+) -> np.ndarray:
+    return np.array([
+            neighbor_flow(data, graph, node, coincidence_window,
+                          duration)
+            for node in graph.nodes
+        ])
 
 
 def firing_rate_distribution(data: Dict[int, np.ndarray],
@@ -499,6 +615,193 @@ def process_bridge_results(
         pure=False
     )
     return pd.DataFrame(client.gather(results))
+
+
+def outflow_worker(
+        data,
+        control_var,
+        duration,
+        graph,
+        causal_window,
+        com_key
+) -> pd.DataFrame:
+    outflow = neuralnetsim.community_outflow(
+        data,
+        graph,
+        causal_window,
+        duration,
+        com_key)
+    return pd.DataFrame(
+        [{
+            'flow': np.mean(flows),
+            'com': com,
+            'control_var': control_var
+        } for com, flows in outflow.items()]
+    )
+
+
+def process_outflow_results(
+        sim_path: Path,
+        graph: nx.DiGraph,
+        client: Client,
+        causal_window: float,
+        com_key: str
+) -> pd.DataFrame:
+    sim_data = neuralnetsim.load(sim_path)
+    results = client.map(
+        outflow_worker,
+        [data for data in sim_data['spike_data']],
+        [par for par in sim_data['control_var']],
+        causal_window=causal_window,
+        duration=sim_data['duration'],
+        graph=graph,
+        com_key=com_key,
+        pure=False
+    )
+    return pd.concat(client.gather(results), ignore_index=True)
+
+
+def global_flow_worker(
+        data,
+        control_var,
+        duration,
+        graph,
+        causal_window
+) -> pd.DataFrame:
+    global_flows = neuralnetsim.global_flow(
+        data,
+        graph,
+        causal_window,
+        duration)
+    return pd.DataFrame(
+        [{
+            'flow': flow,
+            'control_var': control_var
+        } for flow in global_flows]
+    )
+
+
+def process_global_flow_results(
+        sim_path: Path,
+        graph: nx.DiGraph,
+        client: Client,
+        causal_window: float
+) -> pd.DataFrame:
+    sim_data = neuralnetsim.load(sim_path)
+    results = client.map(
+        global_flow_worker,
+        [data for data in sim_data['spike_data']],
+        [par for par in sim_data['control_var']],
+        causal_window=causal_window,
+        duration=sim_data['duration'],
+        graph=graph,
+        pure=False
+    )
+    return pd.concat(client.gather(results), ignore_index=True)
+
+
+def internal_flow_worker(
+        data,
+        control_var,
+        duration,
+        graph,
+        causal_window,
+        com_key
+) -> pd.DataFrame:
+    outflow = neuralnetsim.internal_community_flow(
+        data,
+        graph,
+        causal_window,
+        duration,
+        com_key)
+    return pd.DataFrame(
+        [{
+            'flow': np.mean(flows),
+            'com': com,
+            'control_var': control_var
+        } for com, flows in outflow.items()]
+    )
+
+
+def process_internal_flow_results(
+        sim_path: Path,
+        graph: nx.DiGraph,
+        client: Client,
+        causal_window: float,
+        com_key: str
+) -> pd.DataFrame:
+    sim_data = neuralnetsim.load(sim_path)
+    results = client.map(
+        internal_flow_worker,
+        [data for data in sim_data['spike_data']],
+        [par for par in sim_data['control_var']],
+        causal_window=causal_window,
+        duration=sim_data['duration'],
+        graph=graph,
+        com_key=com_key,
+        pure=False
+    )
+    return pd.concat(client.gather(results), ignore_index=True)
+
+
+def grid_worker(
+        graph,
+        data,
+        par,
+        mu,
+        duration,
+        causal_window,
+        com_key
+):
+    cf = neuralnetsim.internal_community_flow(
+            data,
+            graph,
+            causal_window,
+            duration,
+            com_key)
+    gf = neuralnetsim.global_flow(
+        data,
+        graph,
+        causal_window,
+        duration
+    )
+    return (pd.DataFrame([{
+        r'$\mu$': mu,
+        'flow': np.mean(flows),
+        'com': com,
+        'control_var': par,
+    } for com, flows in cf.items()]),
+        pd.DataFrame(
+            [{
+                r'$\mu$': mu,
+                'flow': flow,
+                'control_var': par
+            } for flow in gf]
+        )
+    )
+
+
+def process_grid_results(
+        sim_path: Path,
+        client: Client,
+        causal_window: float,
+        com_key: str
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    sim_data = neuralnetsim.load(sim_path)
+    results = client.map(
+        grid_worker,
+        [graph for graph in sim_data['graphs']],
+        [data for data in sim_data['spike_data']],
+        [par for par in sim_data['grid_par']],
+        [mu for mu in sim_data['target_modularities']],
+        causal_window=causal_window,
+        duration=sim_data['duration'],
+        com_key=com_key,
+        pure=False
+    )
+    com_results, global_results = zip(*client.gather(results))
+    return pd.concat(com_results, ignore_index=True),\
+           pd.concat(global_results, ignore_index=True)
 
 
 def process_sim_results(
