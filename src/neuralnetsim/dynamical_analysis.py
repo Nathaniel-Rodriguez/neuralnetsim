@@ -26,7 +26,8 @@ __all__ = ["spike_count",
            "global_flow",
            "process_global_flow_results",
            "process_internal_flow_results",
-           "process_grid_results"]
+           "process_grid_results",
+           "find_bridges"]
 
 
 import neuralnetsim
