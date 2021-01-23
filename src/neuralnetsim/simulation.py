@@ -137,6 +137,13 @@ def grid_worker(
     with neuralnetsim.CircuitManager(circuit_type, kernel_parameters,
                                      circuit_parameters, rng) as circuit:
         circuit.run(duration)
+        # if not circuit.run(duration,
+        #                    memory_guard={
+        #                        'duration': 1000.0,
+        #                        'max_spikes': 8000  # ~10 spikes/ms
+        #                    }):
+        #     return {node: np.ndarray([])
+        #             for node in circuit_parameters.network.nodes()}
         return circuit.get_spike_trains()
 
 
@@ -234,7 +241,13 @@ def orig_worker(
     circuit_parameters.set_par(par_key, par)
     with neuralnetsim.CircuitManager(circuit_type, kernel_parameters,
                                      circuit_parameters, rng) as circuit:
-        circuit.run(duration)
+        if not circuit.run(duration,
+                           memory_guard={
+                               'duration': 1000.0,
+                               'max_spikes': 8000  # ~10 spikes/ms
+                           }):
+            return {node: np.ndarray([])
+                    for node in circuit_parameters.network.nodes()}
         return circuit.get_spike_trains()
 
 
