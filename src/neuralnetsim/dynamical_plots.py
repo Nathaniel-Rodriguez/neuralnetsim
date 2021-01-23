@@ -104,6 +104,9 @@ def plot_com_flow(
         save_dir: Path,
         prefix: str = ""
 ):
+    # add coloring by community size as fraction of network
+    # get communities from graph
+    # get community size from graph...
     seaborn.lineplot(data=outflow_df, x='control_var', y='flow', hue='com')
     plt.savefig(save_dir.joinpath("{0}_comflow.png".format(prefix)), dpi=300)
     plt.close()
@@ -114,59 +117,66 @@ def plot_bridge_flow_contour(
         sim_df: pd.DataFrame,
         original_graph: nx.DiGraph,
         save_dir: Path,
-        prefix: str = ""
+        prefix: str = "",
+        n_trials: int = 30
 ):
     n_mus = sim_df[r'$\mu$'].nunique()
     n_par = sim_df["grid_par"].nunique()
     mus = sim_df[[r'$\mu$']].to_numpy()
     par = sim_df[["grid_par"]].to_numpy()
     flows = sim_df[["flow"]].to_numpy()
-    mus = mus.reshape((n_par, n_mus, 30))
-    pars = par.reshape((n_par, n_mus, 30))
-    flows = flows.reshape((n_par, n_mus, 30))
+    mus = mus.reshape((n_par, n_mus, n_trials))
+    pars = par.reshape((n_par, n_mus, n_trials))
+    flows = flows.reshape((n_par, n_mus, n_trials))
 
     f, ax = plt.subplots(1, 1)
     ax.contourf(mus[:, :, 0], pars[:, :, 0], np.mean(flows, axis=2))
     ax.axvline(neuralnetsim.calc_mu(original_graph, "level1"))
     f.savefig(save_dir.joinpath(prefix + "_flow_contour.pdf"))
+    plt.close()
+    plt.clf()
 
 
 def plot_global_flow_contour(
         sim_df: pd.DataFrame,
         original_graph: nx.DiGraph,
         save_dir: Path,
-        prefix: str = ""
+        prefix: str = "",
+        n_trials: int = 30
 ):
     n_mus = sim_df[r'$\mu$'].nunique()
     n_par = sim_df["control_var"].nunique()
     mus = sim_df[[r'$\mu$']].to_numpy()
     par = sim_df[["control_var"]].to_numpy()
     flows = sim_df[["flow"]].to_numpy()
-    mus = mus.reshape((n_par, n_mus, 30, -1))
-    pars = par.reshape((n_par, n_mus, 30, -1))
-    flows = flows.reshape((n_par, n_mus, 30, -1))
+    mus = mus.reshape((n_par, n_mus, n_trials, -1))
+    pars = par.reshape((n_par, n_mus, n_trials, -1))
+    flows = flows.reshape((n_par, n_mus, n_trials, -1))
     flows = np.mean(flows, axis=3)
 
     f, ax = plt.subplots(1, 1)
     ax.contourf(mus[:, :, 0, 0], pars[:, :, 0, 0], np.mean(flows, axis=2))
     ax.axvline(neuralnetsim.calc_mu(original_graph, "level1"))
     f.savefig(save_dir.joinpath(prefix + "_global_contour.pdf"))
+    plt.close()
+    plt.clf()
 
 
 def plot_bridge_act_contour(
         sim_df: pd.DataFrame,
         original_graph: nx.DiGraph,
         save_dir: Path,
-        prefix: str = ""
+        prefix: str = "",
+        n_trials: int = 30
 ):
     n_mus = sim_df[r'$\mu$'].nunique()
     n_par = sim_df["grid_par"].nunique()
     mus = sim_df[[r'$\mu$']].to_numpy()
     par = sim_df[["grid_par"]].to_numpy()
     acts = sim_df[["activity"]].to_numpy()
-    mus = mus.reshape((n_par, n_mus, 30))
-    pars = par.reshape((n_par, n_mus, 30))
-    acts = acts.reshape((n_par, n_mus, 30))
+    mus = mus.reshape((n_par, n_mus, n_trials))
+    pars = par.reshape((n_par, n_mus, n_trials))
+    acts = acts.reshape((n_par, n_mus, n_trials))
 
     f, ax = plt.subplots(1, 1)
     ax.contourf(mus[:, :, 0], pars[:, :, 0], np.mean(acts, axis=2))
