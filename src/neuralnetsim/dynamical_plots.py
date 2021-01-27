@@ -63,16 +63,16 @@ def plot_bridge_slice(
         window_size: int,
         save_dir: Path,
         prefix: str = ""):
-    seaborn.lineplot(data=sim_df, x=r'$\mu$', y='flow', hue='grid_par')
+    max_idx = sim_df['flow'].idxmax()
+    max_par = sim_df['grid_par'][max_idx]
+    max_df = sim_df[sim_df['grid_par'] == max_par]
+    ax = seaborn.lineplot(data=max_df, x=r'$\mu$', y='flow', hue='grid_par', palette="tab10")
+    ax.set_ylabel(r"$\Phi^{\mu}$")
+    ax.get_legend().remove()
     plt.axhline(0.0, c='black', ls='--')
-    plt.axvline(neuralnetsim.calc_mu(original_graph, "level1"))
-    plt.savefig(save_dir.joinpath("{0}_flow_w{1}.png".format(prefix, str(window_size))), dpi=300)
-    plt.close()
-    plt.clf()
-    seaborn.lineplot(data=sim_df, x=r'$\mu$', y='activity', hue='grid_par')
-    plt.axhline(0.0, c='black', ls='--')
-    plt.axvline(neuralnetsim.calc_mu(original_graph, "level1"))
-    plt.savefig(save_dir.joinpath("{0}_act_w{1}.png".format(prefix, str(window_size))), dpi=300)
+    plt.axvline(neuralnetsim.calc_mu(original_graph, "level1"), color="red")
+    plt.tight_layout()
+    plt.savefig(save_dir.joinpath("{0}_flow_cut.pdf".format(prefix)), dpi=300)
     plt.close()
     plt.clf()
 
@@ -82,8 +82,12 @@ def plot_outflow(
         save_dir: Path,
         prefix: str = ""
 ):
-    seaborn.lineplot(data=outflow_df, x='control_var', y='flow', hue='com')
-    plt.savefig(save_dir.joinpath("{0}_outflow.png".format(prefix)), dpi=300)
+    lg_coms = outflow_df[outflow_df['com'] < 6]  # largest 5 coms only
+    ax = seaborn.lineplot(data=lg_coms, x='control_var', y='flow', hue='com', palette="tab10")
+    ax.set_ylabel(r"$\Phi^{\mu}$")
+    ax.set_xlabel(r"$\rho$")
+    plt.tight_layout()
+    plt.savefig(save_dir.joinpath("{0}_outflow.pdf".format(prefix)), dpi=300)
     plt.close()
     plt.clf()
 
@@ -104,9 +108,6 @@ def plot_com_flow(
         save_dir: Path,
         prefix: str = ""
 ):
-    # add coloring by community size as fraction of network
-    # get communities from graph
-    # get community size from graph...
     seaborn.lineplot(data=outflow_df, x='control_var', y='flow', hue='com')
     plt.savefig(save_dir.joinpath("{0}_comflow.png".format(prefix)), dpi=300)
     plt.close()
@@ -130,8 +131,12 @@ def plot_bridge_flow_contour(
     flows = flows.reshape((n_par, n_mus, n_trials))
 
     f, ax = plt.subplots(1, 1)
-    ax.contourf(mus[:, :, 0], pars[:, :, 0], np.mean(flows, axis=2))
-    ax.axvline(neuralnetsim.calc_mu(original_graph, "level1"))
+    cont = ax.contourf(mus[:, :, 0], pars[:, :, 0], np.mean(flows, axis=2))
+    ax.axvline(neuralnetsim.calc_mu(original_graph, "level1"), color='red')
+    ax.set_ylabel(r"$\rho$")
+    ax.set_xlabel(r"$\mu$")
+    f.colorbar(cont)
+    plt.tight_layout()
     f.savefig(save_dir.joinpath(prefix + "_flow_contour.pdf"))
     plt.close()
     plt.clf()

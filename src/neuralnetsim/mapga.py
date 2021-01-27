@@ -629,7 +629,7 @@ class MapExploreExploit:
                     pure=False))
                 self._step += 1
 
-            # updated cell novelties
+            # updated cell novelties every 100 steps
             if self._step % 100 == 0:
                 self._update_cell_novelties()
 

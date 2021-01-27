@@ -94,6 +94,7 @@ def plot_slice(graph: nx.DiGraph,
     )
     ax = plt.gca()
     ax.set_axis_off()
+    plt.tight_layout()
     plt.savefig(save_dir.joinpath(prefix + "_slice.pdf"))
     plt.close()
     plt.clf()
