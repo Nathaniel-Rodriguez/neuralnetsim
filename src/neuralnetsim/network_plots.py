@@ -273,7 +273,9 @@ def plot_graph_collapsed_strength_distributions(
         comparison_graphs: List[nx.DiGraph],
         direction="in",
         save_dir: Path = None,
-        prefix: str = ""):
+        prefix: str = "",
+        **kwargs
+):
     if save_dir is None:
         save_dir = Path.cwd()
     original_dists = [calc_strength_distribution(original_graph, direction)
@@ -291,7 +293,9 @@ def plot_graph_collapsed_strength_distributions(
         "Originals",
         "Generated",
         save_dir,
-        prefix + "_" + direction + "_strength")
+        prefix + "_" + direction + "_strength",
+        **kwargs
+    )
 
 
 def plot_graph_collapsed_nodal_strength_differences(
@@ -299,7 +303,9 @@ def plot_graph_collapsed_nodal_strength_differences(
         original_graphs: List[nx.DiGraph],
         comparison_graphs: List[nx.DiGraph],
         save_dir: Path = None,
-        prefix: str = ""):
+        prefix: str = "",
+        **kwargs
+):
     if save_dir is None:
         save_dir = Path.cwd()
     original_dists = [calc_nodal_strength_difference_distribution(original_graph)
@@ -317,4 +323,6 @@ def plot_graph_collapsed_nodal_strength_differences(
         "Originals",
         "Generated",
         save_dir,
-        prefix + "_sdiff")
+        prefix + "_sdiff",
+        **kwargs
+    )
