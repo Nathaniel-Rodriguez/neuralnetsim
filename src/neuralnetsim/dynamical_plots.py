@@ -82,8 +82,7 @@ def plot_outflow(
         save_dir: Path,
         prefix: str = ""
 ):
-    lg_coms = outflow_df[outflow_df['com'] < 6]  # largest 5 coms only
-    ax = seaborn.lineplot(data=lg_coms, x='control_var', y='flow', hue='com', palette="tab10")
+    ax = seaborn.lineplot(data=outflow_df, x='control_var', y='flow', hue='com', palette="tab10")
     ax.set_ylabel(r"$\Phi^{\mu}$")
     ax.set_xlabel(r"$\rho$")
     plt.tight_layout()

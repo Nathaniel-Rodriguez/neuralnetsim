@@ -634,6 +634,12 @@ def outflow_worker(
         com_key)
     return pd.DataFrame(
         [{
+            'activity': neuralnetsim.spike_count(
+                neuralnetsim.community_sub_data(
+                    com, data, graph, com_key))
+                        / duration
+                        / neuralnetsim.get_community_size(
+                graph, com_key, com),
             'flow': np.mean(flows),
             'com': com,
             'control_var': control_var

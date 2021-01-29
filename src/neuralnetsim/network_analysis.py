@@ -1,10 +1,15 @@
 __all__ = ["calc_mu", "calc_strength_distribution",
            "calc_nodal_strength_difference_distribution",
-           "get_communities"]
+           "get_communities",
+           "get_largest_n_communities",
+           "get_community_size",
+           "get_nodes_in_community",
+           "community_sub_data"]
 
 
 import numpy as np
 import networkx as nx
+from collections import Counter
 from typing import List
 
 
@@ -23,6 +28,23 @@ def calc_mu(graph: nx.DiGraph, key: str) -> float:
     ) / sum(weight for edge, weight in nx.get_edge_attributes(graph, "weight").items())
 
 
+def get_nodes_in_community(graph, com, key):
+    return [node for node in graph.nodes if graph.nodes[node][key] == com]
+
+
+def community_sub_data(com, data, graph, key):
+    return {
+        neuron_id: array
+        for neuron_id, array in data.items()
+        if neuron_id in get_nodes_in_community(graph, com, key)
+    }
+
+
+def get_community_size(graph: nx.DiGraph, key: str, com: int) -> int:
+    counter = Counter([com for com in nx.get_node_attributes(graph, key).values()])
+    return counter[com]
+
+
 def get_communities(graph: nx.DiGraph, key: str) -> List[int]:
     """
 
@@ -31,6 +53,18 @@ def get_communities(graph: nx.DiGraph, key: str) -> List[int]:
     :return:
     """
     return sorted(list(set(com for com in nx.get_node_attributes(graph, key).values())))
+
+
+def get_largest_n_communities(graph: nx.DiGraph, key: str, n: int) -> List[int]:
+    """
+
+    :param graph:
+    :param key:
+    :param n:
+    :return:
+    """
+    counter = Counter([com for com in nx.get_node_attributes(graph, key).values()])
+    return list(zip(*counter.most_common(n)))[0]
 
 
 def calc_strength_distribution(graph: nx.DiGraph, direction: str) -> np.ndarray:
