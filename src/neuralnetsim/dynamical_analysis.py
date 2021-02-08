@@ -580,18 +580,15 @@ def bridge_worker(
         causal_window,
         com_key
 ):
-    bfs = neuralnetsim.bridge_flows(
-            data,
-            graph,
-            causal_window,
-            duration,
-            com_key)
-    bf = np.mean(bfs)
-    sdbf = np.std(bfs)
+    bf = np.mean(neuralnetsim.bridge_flows(data, graph, causal_window, duration, com_key))
+    gf = np.mean(neuralnetsim.global_flow(data, graph, causal_window, duration))
+    cf = np.mean(np.concatenate([efs for efs in neuralnetsim.internal_community_flow(
+            data, graph, causal_window, duration, com_key).values()]))
     return {'max duration': duration,
             r'$\mu$': mu,
             'flow': bf,
-            'sdflow': sdbf,
+            'gflow': gf,
+            'cflow': cf,
             'grid_par': par,
             'activity': neuralnetsim.spike_count(data) / duration / nx.number_of_nodes(graph)
             }
@@ -632,6 +629,8 @@ def outflow_worker(
         causal_window,
         duration,
         com_key)
+    cflow = neuralnetsim.internal_community_flow(
+        data, graph, causal_window, duration, com_key)
     return pd.DataFrame(
         [{
             'activity': neuralnetsim.spike_count(
@@ -641,6 +640,7 @@ def outflow_worker(
                         / neuralnetsim.get_community_size(
                 graph, com_key, com),
             'flow': np.mean(flows),
+            'cflow': np.mean(cflow[com]),
             'com': com,
             'control_var': control_var
         } for com, flows in outflow.items()]
