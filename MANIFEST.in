@@ -1,1 +1,5 @@
-include README.rst
+graft src
+include README.md
+include LICENSE
+include tests/test*
+include tests/test_data/*.mat
